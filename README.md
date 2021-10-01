@@ -5,7 +5,6 @@ A very small (&lt; 8 kB) and memory conscious (&lt; 40 bytes + a shared 512 byte
 
 Disk operations:
 
-|-----------|-------------|-------|--------|
 | Operation | Description | Input | Output |
 |-----------|-------------|-------|--------|
 | `F_FREE`  | Free disk space | - | `000 - 003`: Space, in bytes |
