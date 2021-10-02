@@ -1,6 +1,7 @@
 #ifndef FORTUNA_FAT32_H_
 #define FORTUNA_FAT32_H_
 
+#include <stdbool.h>
 #include <stdint.h>
 
 typedef enum {
