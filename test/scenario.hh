@@ -21,11 +21,12 @@ public:
     
     static void print_legend();
     static void print_scenarios(uint16_t spaces_at_start);
+    static void generate_disk_creators();
 
 private:
     static constexpr uint8_t   v_partitions[] = { 0, 1, 2 };
     static constexpr DiskState v_disk_states[] = { DiskState::Empty, DiskState::FilesInRoot, DiskState::Complete };
-    static constexpr uint16_t  v_disk_size[] = { 2, 64, 512 };
+    static constexpr uint16_t  v_disk_size[] = { 64, 256, 1024 };
     static constexpr uint8_t   v_sectors_per_cluster[] = { 1, 8, 64 };
 };
 
