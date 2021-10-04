@@ -19,7 +19,7 @@ std::vector<Scenario> Scenario::all_scenarios()
     scenarios.emplace_back(i++, 1, DiskState::Complete, 256, 4);
     
     scenarios.emplace_back(i++, 0, DiskState::Complete, 256, 4);
-    scenarios.emplace_back(i++, 2, DiskState::Complete, 512, 4);
+    scenarios.emplace_back(i++, 2, DiskState::Complete, 256, 4);
     
     scenarios.emplace_back(i++, 1, DiskState::Complete, 64, 1);
     scenarios.emplace_back(i++, 1, DiskState::Complete, 512, 8);
@@ -38,7 +38,7 @@ void Scenario::print_legend()
     std::cout << "  * Disk size (bits)\n";
     std::cout << "     S - small (64 MB)\n";
     std::cout << "     M - medium (256 MB)\n";
-    std::cout << "     L - large (1 GB)\n";
+    std::cout << "     L - large (512 MB)\n";
     std::cout << "  * Sectors per cluster (bits)\n";
     std::cout << "\n";
 }
@@ -67,7 +67,7 @@ void Scenario::print_scenarios(uint16_t spaces_at_start)
         switch (scenario.disk_size) {
             case 64:   std::cout << 'S'; break;
             case 256:  std::cout << 'M'; break;
-            case 1024: std::cout << 'L'; break;
+            case 512: std::cout << 'L'; break;
         }
     }
     std::cout << '\n';
@@ -173,9 +173,6 @@ void Scenario::decompress_image() const
     if (BrotliDecoderDecompress(file_size, compressed_data, &decoded_size, image_) != BROTLI_DECODER_RESULT_SUCCESS)
         abort();
     BrotliDecoderDestroyInstance(state);
-    
-    // if (BZ2_bzBuffToBuffDecompress((char*) image_, &original_size, (char*) compressed_data, file_size, 0, 1) != BZ_OK)
-    //    abort();
 }
 
 uint8_t const* Scenario::link_to_compressed(size_t* file_size) const
