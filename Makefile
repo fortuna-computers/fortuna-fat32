@@ -1,5 +1,5 @@
 FORTUNA_FAT32 = src/ffat32.o
-TEST_OBJ = test/test.o test/scenario.o test/scenario_images.o \
+TEST_OBJ = test/test.o test/scenario.o \
 	test/0.o test/1.o test/2.o test/3.o test/4.o test/5.o test/6.o
 CFLAGS = -std=c11
 CPPFLAGS = -Wall -Wextra -O2
@@ -10,7 +10,7 @@ all: ftest
 
 #ftest: CPPFLAGS += -g -O0
 ftest: ${FORTUNA_FAT32} ${TEST_OBJ}
-	g++ $^ -o $@
+	g++ $^ -o $@ `pkg-config --libs libbrotlicommon libbrotlidec`
 .PHONY: ftest
 
 test/%.o: test/imghdr/%.img.br

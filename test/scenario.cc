@@ -4,6 +4,8 @@
 #include <iostream>
 #include <iomanip>
 
+#include "brotli/decode.h"
+
 uint8_t Scenario::image_[1024 * 1024 * 1024] = { 0 };
 
 std::vector<Scenario> Scenario::all_scenarios()
@@ -162,12 +164,46 @@ void Scenario::generate_disk_creators()
 
 void Scenario::decompress_image() const
 {
-    uint32_t file_size, original_size;
-    uint8_t const* compressed_data = link_to_bzip2(&file_size, &original_size);
+    size_t file_size;
+    uint8_t const* compressed_data = link_to_compressed(&file_size);
     
-    if (original_size > sizeof image_)
+    size_t decoded_size = sizeof image_;
+    
+    BrotliDecoderState* state = BrotliDecoderCreateInstance(nullptr, nullptr, nullptr);
+    if (BrotliDecoderDecompress(file_size, compressed_data, &decoded_size, image_) != BROTLI_DECODER_RESULT_SUCCESS)
         abort();
+    BrotliDecoderDestroyInstance(state);
     
     // if (BZ2_bzBuffToBuffDecompress((char*) image_, &original_size, (char*) compressed_data, file_size, 0, 1) != BZ_OK)
     //    abort();
 }
+
+uint8_t const* Scenario::link_to_compressed(size_t* file_size) const
+{
+    extern uint8_t _binary_test_imghdr_0_img_br_start[];
+    extern uint8_t _binary_test_imghdr_0_img_br_size;
+    extern uint8_t _binary_test_imghdr_1_img_br_start[];
+    extern uint8_t _binary_test_imghdr_1_img_br_size;
+    extern uint8_t _binary_test_imghdr_2_img_br_start[];
+    extern uint8_t _binary_test_imghdr_2_img_br_size;
+    extern uint8_t _binary_test_imghdr_3_img_br_start[];
+    extern uint8_t _binary_test_imghdr_3_img_br_size;
+    extern uint8_t _binary_test_imghdr_4_img_br_start[];
+    extern uint8_t _binary_test_imghdr_4_img_br_size;
+    extern uint8_t _binary_test_imghdr_5_img_br_start[];
+    extern uint8_t _binary_test_imghdr_5_img_br_size;
+    extern uint8_t _binary_test_imghdr_6_img_br_start[];
+    extern uint8_t _binary_test_imghdr_6_img_br_size;
+    
+    switch (number) {
+        case 0: *file_size = (size_t) &_binary_test_imghdr_0_img_br_size; return _binary_test_imghdr_0_img_br_start;
+        case 1: *file_size = (size_t) &_binary_test_imghdr_1_img_br_size; return _binary_test_imghdr_1_img_br_start;
+        case 2: *file_size = (size_t) &_binary_test_imghdr_2_img_br_size; return _binary_test_imghdr_2_img_br_start;
+        case 3: *file_size = (size_t) &_binary_test_imghdr_3_img_br_size; return _binary_test_imghdr_3_img_br_start;
+        case 4: *file_size = (size_t) &_binary_test_imghdr_4_img_br_size; return _binary_test_imghdr_4_img_br_start;
+        case 5: *file_size = (size_t) &_binary_test_imghdr_5_img_br_size; return _binary_test_imghdr_5_img_br_start;
+        case 6: *file_size = (size_t) &_binary_test_imghdr_6_img_br_size; return _binary_test_imghdr_6_img_br_start;
+        default: abort();
+    }
+}
+

@@ -35,7 +35,7 @@ private:
     static constexpr uint16_t  v_disk_size[] = { 64, 256, 1024 };
     static constexpr uint8_t   v_sectors_per_cluster[] = { 1, 8, 32 };
     
-    uint8_t const* link_to_bzip2(uint32_t* file_size, uint32_t* original_size) const;
+    uint8_t const* link_to_compressed(size_t* file_size) const;
     
     static uint8_t image_[1024 * 1024 * 1024];
 };
