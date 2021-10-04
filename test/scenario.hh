@@ -9,20 +9,19 @@ class Scenario {
 public:
     enum class DiskState { Empty, FilesInRoot, Complete };
     
-    Scenario(uint8_t number, uint8_t partitions, DiskState disk_state, uint16_t disk_size, uint16_t sectors_per_cluster)
-             : number(number), partitions(partitions), disk_state(disk_state), disk_size(disk_size),
+    Scenario(uint8_t number, std::string const& name, uint8_t partitions, DiskState disk_state, uint16_t disk_size, uint16_t sectors_per_cluster)
+             : number(number), name(name), partitions(partitions), disk_state(disk_state), disk_size(disk_size),
                sectors_per_cluster(sectors_per_cluster) {}
                
-    const uint8_t   number;
-    const uint8_t   partitions;
-    const DiskState disk_state;
-    const uint16_t  disk_size;
-    const uint16_t  sectors_per_cluster;
+    const uint8_t     number;
+    const std::string name;
+    const uint8_t     partitions;
+    const DiskState   disk_state;
+    const uint16_t    disk_size;
+    const uint16_t    sectors_per_cluster;
     
     static std::vector<Scenario> all_scenarios();
     
-    static void print_legend();
-    static void print_scenarios(uint16_t spaces_at_start);
     static void generate_disk_creators();
     
     static uint8_t* image() { return image_; }

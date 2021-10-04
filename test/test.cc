@@ -10,12 +10,9 @@ int main(int argc, char* argv[])
         return EXIT_SUCCESS;
     }
     
-    Scenario::print_legend();
-    Scenario::print_scenarios(25);
+    auto scenarios = Scenario::all_scenarios();
     
-    int i = 0;
-    for (auto const& scenario: Scenario::all_scenarios()) {
-        printf("%d\n", ++i);
-        scenario.decompress_image();
-    }
+    Scenario::all_scenarios().at(0).decompress_image();
+    
+    
 }

@@ -2,7 +2,6 @@
 
 #include <cmath>
 #include <iostream>
-#include <iomanip>
 
 #include "brotli/decode.h"
 
@@ -14,73 +13,17 @@ std::vector<Scenario> Scenario::all_scenarios()
     
     size_t i = 0;
     
-    scenarios.emplace_back(i++, 1, DiskState::Empty, 256, 4);
-    scenarios.emplace_back(i++, 1, DiskState::FilesInRoot, 256, 4);
-    scenarios.emplace_back(i++, 1, DiskState::Complete, 256, 4);
+    scenarios.emplace_back(i++, "Standard empty disk", 1, DiskState::Empty, 256, 4);
+    scenarios.emplace_back(i++, "Standard disk with files in root dir", 1, DiskState::FilesInRoot, 256, 4);
+    scenarios.emplace_back(i++, "Standard disk with directories and files", 1, DiskState::Complete, 256, 4);
     
-    scenarios.emplace_back(i++, 0, DiskState::Complete, 256, 4);
-    scenarios.emplace_back(i++, 2, DiskState::Complete, 256, 4);
+    scenarios.emplace_back(i++, "Raw image without partitions", 0, DiskState::Complete, 256, 4);
+    scenarios.emplace_back(i++, "Image with 2 partitions", 2, DiskState::Complete, 256, 4);
     
-    scenarios.emplace_back(i++, 1, DiskState::Complete, 64, 1);
-    scenarios.emplace_back(i++, 1, DiskState::Complete, 512, 8);
+    scenarios.emplace_back(i++, "Disk with one sector per cluster", 1, DiskState::Complete, 64, 1);
+    scenarios.emplace_back(i++, "Disk with 8 sectors per cluster", 1, DiskState::Complete, 512, 8);
     
     return scenarios;
-}
-
-void Scenario::print_legend()
-{
-    std::cout << "Legend:\n";
-    std::cout << "  * Number of partitions\n";
-    std::cout << "  * Disk state:\n";
-    std::cout << "     E - Empty disk\n";
-    std::cout << "     R - Files in root\n";
-    std::cout << "     C - Complete disk with subdirectories\n";
-    std::cout << "  * Disk size (bits)\n";
-    std::cout << "     S - small (64 MB)\n";
-    std::cout << "     M - medium (256 MB)\n";
-    std::cout << "     L - large (512 MB)\n";
-    std::cout << "  * Sectors per cluster (bits)\n";
-    std::cout << "\n";
-}
-
-void Scenario::print_scenarios(uint16_t spaces_at_start)
-{
-    auto scenarios = all_scenarios();
-    
-    std::cout << std::left << std::setw(spaces_at_start) << "Partitions";
-    for (auto const& scenario: scenarios)
-        std::cout << std::to_string(scenario.partitions);
-    std::cout << '\n';
-    
-    std::cout << std::left << std::setw(spaces_at_start) << "Disk state";
-    for (auto const& scenario: scenarios) {
-        switch (scenario.disk_state) {
-            case DiskState::Empty:       std::cout << 'E'; break;
-            case DiskState::FilesInRoot: std::cout << 'R'; break;
-            case DiskState::Complete:    std::cout << 'C'; break;
-        }
-    }
-    std::cout << '\n';
-    
-    std::cout << std::left << std::setw(spaces_at_start) << "Disk size";
-    for (auto const& scenario: scenarios) {
-        switch (scenario.disk_size) {
-            case 64:   std::cout << 'S'; break;
-            case 256:  std::cout << 'M'; break;
-            case 512: std::cout << 'L'; break;
-        }
-    }
-    std::cout << '\n';
-    
-    std::cout << std::left << std::setw(spaces_at_start) << "Sectors per cluster";
-    for (auto const& scenario: scenarios)
-        if (scenario.sectors_per_cluster == 1)
-            std::cout << '1';
-        else
-            std::cout << std::to_string((int) std::log2(scenario.sectors_per_cluster - 1) + 1);
-    std::cout << '\n';
-    
-    std::cout << std::string(spaces_at_start + scenarios.size(), '-') << "\n";
 }
 
 void Scenario::generate_disk_creators()
