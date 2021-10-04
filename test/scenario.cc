@@ -6,7 +6,7 @@
 
 #include "brotli/decode.h"
 
-uint8_t Scenario::image_[1024 * 1024 * 1024] = { 0 };
+uint8_t Scenario::image_[512 * 1024 * 1024] = { 0 };
 
 std::vector<Scenario> Scenario::all_scenarios()
 {

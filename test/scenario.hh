@@ -37,7 +37,7 @@ private:
     
     uint8_t const* link_to_compressed(size_t* file_size) const;
     
-    static uint8_t image_[1024 * 1024 * 1024];
+    static uint8_t image_[512 * 1024 * 1024];
 };
 
 #endif
