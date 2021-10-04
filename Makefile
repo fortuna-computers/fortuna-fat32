@@ -7,8 +7,8 @@ MCU = atmega16
 all: ftest
 
 ftest: CPPFLAGS += -g -O0
-ftest: ${FORTUNA_FAT32} test/test.o test/scenario.o
-	g++ $^ -o $@
+ftest: ${FORTUNA_FAT32} test/test.o test/scenario.o test/scenario_images.o
+	g++ $^ -o $@ -lbz2
 .PHONY: ftest
 
 size: CC=avr-gcc
