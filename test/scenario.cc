@@ -74,13 +74,16 @@ void Scenario::generate_disk_creators()
     auto scenarios = all_scenarios();
     
     std::cout << "#!/bin/sh\n\n";
+    std::cout << "mkdir -p mnt test/imghdr\n\n";
     
     size_t i = 0;
     for (auto const& scenario: scenarios) {
         const std::string filename = std::to_string(i) + ".img";
         
+        std::cout << "echo 'Generating scenario " << std::to_string(i) << "...'\n";
+        
         // create image
-        std::cout << "dd if=/dev/zero of=" + filename + " bs=1M count=" << std::to_string(scenario.disk_size) << " && \\\n";
+        std::cout << "dd if=/dev/zero of=" << filename << " bs=1M count=" << scenario.disk_size << " status=none && \\\n";
         
         // create partitions
         std::string device_name = filename;
@@ -88,7 +91,7 @@ void Scenario::generate_disk_creators()
         if (scenario.partitions != 0) {
             switch (scenario.partitions) {
                 case 1:
-                    std::cout << "    parted -a optimal " + filename + " mktable msdos mkpart primary fat32 1 '100%' && \\\n";
+                    std::cout << "    parted -a optimal " << filename << " mktable msdos mkpart primary fat32 1 '100%' && \\\n";
                     break;
                 case 2:
                     std::cout << "    parted -a optimal " + filename + " mktable msdos mkpart primary fat32 1 '50%' mkpart primary fat32 '50%' '100%' \\\n";
@@ -98,36 +101,40 @@ void Scenario::generate_disk_creators()
             device_name = "/dev/loop0p0";
     
             // create loopback devices
-            std::cout << "    kpartx -av " + filename + " && \\\n";
+            std::cout << "    kpartx -av " << filename << " && \\\n";
         }
             
         // format partition
-        std::cout << "    mkfs.fat -F 32 -s " + std::to_string(scenario.sectors_per_cluster) + " " + device_name + " && \\\n";
+        std::cout << "    mkfs.fat -F 32 -n FORTUNA -s " << scenario.sectors_per_cluster << " " << device_name << " > /dev/null && \\\n";
         
-        // mount partition
-        std::cout << "    mount " + device_name + " mnt && \\\n";
-        
-        // copy files
-        
-        // dismount partition
-        std::cout << "    umount mnt && \\\n";
+        if (scenario.disk_state != DiskState::Empty) {
+            // mount partition
+            std::cout << "    mount " << device_name << " mnt && \\\n";
+            
+            // copy files
+            
+            // dismount partition
+            std::cout << "    umount mnt && \\\n";
+        }
     
         if (scenario.partitions != 0) {
             // remove loopback devices
-            std::cout << "    kpartx -d " + filename + " && \\\n";
+            std::cout << "    kpartx -d " << filename << " && \\\n";
         }
         
         // compress image file
-        std::cout << "    bzip2 -i " + filename + " && \\\n";
+        std::cout << "    bzip2 -1 " << filename << " && \\\n";
         
         // C-ify image file
-        std::cout << "    xxd -i " + filename + ".bz2 > " + std::to_string(i) + ".h && \\\n";
+        std::cout << "    xxd -i " << filename << ".bz2 > test/imghdr/" << i << + ".h && \\\n";
         
         // remove image file
-        std::cout << "    rm " + filename + ".bz2";
+        std::cout << "    rm " << filename << ".bz2";
         
         std::cout << "\n\n";
         break;
         ++i;
     }
+    
+    std::cout << "rmdir mnt\n";
 }
