@@ -1,14 +1,14 @@
 FORTUNA_FAT32 = src/ffat32.o
 CFLAGS = -std=c11
-CPPFLAGS = -Wall -Wextra
+CPPFLAGS = -Wall -Wextra -O2
 CXXFLAGS = -std=c++17
 MCU = atmega16
 
 all: ftest
 
-ftest: CPPFLAGS += -g -O0
-ftest: ${FORTUNA_FAT32} test/test.o test/scenario.o test/scenario_images.o
-	g++ $^ -o $@ -lbz2
+#ftest: CPPFLAGS += -g -O0
+ftest: ${FORTUNA_FAT32} test/test.o test/scenario.o test/scenario_images.o test/minilzo-2.10/minilzo.c
+	g++ $^ -o $@
 .PHONY: ftest
 
 size: CC=avr-gcc

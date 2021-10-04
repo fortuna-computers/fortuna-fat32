@@ -13,5 +13,9 @@ int main(int argc, char* argv[])
     Scenario::print_legend();
     Scenario::print_scenarios(25);
     
-    Scenario::all_scenarios().at(0).allocate_and_decompress_image();
+    int i = 0;
+    for (auto const& scenario: Scenario::all_scenarios()) {
+        printf("%d\n", ++i);
+        scenario.decompress_image();
+    }
 }

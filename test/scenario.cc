@@ -4,7 +4,7 @@
 #include <iostream>
 #include <iomanip>
 
-#include "bzlib.h"
+uint8_t Scenario::image_[1024 * 1024 * 1024] = { 0 };
 
 std::vector<Scenario> Scenario::all_scenarios()
 {
@@ -143,14 +143,15 @@ void Scenario::generate_disk_creators()
         }
         
         // compress image file
-        std::cout << "    bzip2 -1 " << filename << " && \\\n";
+        std::cout << "    lzop -1 " << filename << " && \\\n";
         
         // C-ify image file
-        std::cout << "    xxd -i " << filename << ".bz2 > test/imghdr/" << i << ".h && \\\n";
+        std::cout << "    xxd -i " << filename << ".lzo > test/imghdr/" << i << ".h && \\\n";
         std::cout << "    sed -i '1s/^/static const /' test/imghdr/" << i << ".h && \\\n";
+        std::cout << "    echo '\nstatic const size_t __" << i << "_original = " << disk_size * 1024 * 1024 << ";' >> test/imghdr/" << i << ".h && \\\n";
         
         // remove image file
-        std::cout << "    rm " << filename << ".bz2 && \\\n";
+        std::cout << "    rm " << filename << " " << filename << ".lzo && \\\n";
         std::cout << "    sync .\n";
         
         std::cout << "\n\n";
@@ -160,14 +161,14 @@ void Scenario::generate_disk_creators()
     std::cout << "rmdir mnt\n";
 }
 
-std::unique_ptr<uint8_t[]> Scenario::allocate_and_decompress_image() const
+void Scenario::decompress_image() const
 {
-    bz_stream bzstream = { 0 };
-    if (BZ2_bzDecompressInit(&bzstream, 0, 0) != BZ_OK)
+    uint32_t file_size, original_size;
+    uint8_t const* compressed_data = link_to_bzip2(&file_size, &original_size);
+    
+    if (original_size > sizeof image_)
         abort();
-    if (BZ2_bzDecompress(&bzstream) != BZ_OK)
-        abort();
-    if (BZ2_bzDecompressEnd(&bzstream) != BZ_OK)
-        abort();
-    return std::unique_ptr<uint8_t[]>();
+    
+    // if (BZ2_bzBuffToBuffDecompress((char*) image_, &original_size, (char*) compressed_data, file_size, 0, 1) != BZ_OK)
+    //    abort();
 }

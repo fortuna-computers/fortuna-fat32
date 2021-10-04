@@ -1,6 +1,6 @@
 #include "scenario.hh"
 
-uint8_t const* Scenario::link_to_bzip2(uint32_t* size) const
+uint8_t const* Scenario::link_to_bzip2(uint32_t* file_size, uint32_t* original_size) const
 {
 #include "imghdr/0.h"
 #include "imghdr/1.h"
@@ -58,60 +58,60 @@ uint8_t const* Scenario::link_to_bzip2(uint32_t* size) const
 #include "imghdr/53.h"
     
     switch (number) {
-        case 0: *size = __0_img_bz2_len; return __0_img_bz2;
-        case 1: *size = __1_img_bz2_len; return __1_img_bz2;
-        case 2: *size = __2_img_bz2_len; return __2_img_bz2;
-        case 3: *size = __3_img_bz2_len; return __3_img_bz2;
-        case 4: *size = __4_img_bz2_len; return __4_img_bz2;
-        case 5: *size = __5_img_bz2_len; return __5_img_bz2;
-        case 6: *size = __6_img_bz2_len; return __6_img_bz2;
-        case 7: *size = __7_img_bz2_len; return __7_img_bz2;
-        case 8: *size = __8_img_bz2_len; return __8_img_bz2;
-        case 9: *size = __9_img_bz2_len; return __9_img_bz2;
-        case 10: *size = __10_img_bz2_len; return __10_img_bz2;
-        case 11: *size = __11_img_bz2_len; return __11_img_bz2;
-        case 12: *size = __12_img_bz2_len; return __12_img_bz2;
-        case 13: *size = __13_img_bz2_len; return __13_img_bz2;
-        case 14: *size = __14_img_bz2_len; return __14_img_bz2;
-        case 15: *size = __15_img_bz2_len; return __15_img_bz2;
-        case 16: *size = __16_img_bz2_len; return __16_img_bz2;
-        case 17: *size = __17_img_bz2_len; return __17_img_bz2;
-        case 18: *size = __18_img_bz2_len; return __18_img_bz2;
-        case 19: *size = __19_img_bz2_len; return __19_img_bz2;
-        case 20: *size = __20_img_bz2_len; return __20_img_bz2;
-        case 21: *size = __21_img_bz2_len; return __21_img_bz2;
-        case 22: *size = __22_img_bz2_len; return __22_img_bz2;
-        case 23: *size = __23_img_bz2_len; return __23_img_bz2;
-        case 24: *size = __24_img_bz2_len; return __24_img_bz2;
-        case 25: *size = __25_img_bz2_len; return __25_img_bz2;
-        case 26: *size = __26_img_bz2_len; return __26_img_bz2;
-        case 27: *size = __27_img_bz2_len; return __27_img_bz2;
-        case 28: *size = __28_img_bz2_len; return __28_img_bz2;
-        case 29: *size = __29_img_bz2_len; return __29_img_bz2;
-        case 30: *size = __30_img_bz2_len; return __30_img_bz2;
-        case 31: *size = __31_img_bz2_len; return __31_img_bz2;
-        case 32: *size = __32_img_bz2_len; return __32_img_bz2;
-        case 33: *size = __33_img_bz2_len; return __33_img_bz2;
-        case 34: *size = __34_img_bz2_len; return __34_img_bz2;
-        case 35: *size = __35_img_bz2_len; return __35_img_bz2;
-        case 36: *size = __36_img_bz2_len; return __36_img_bz2;
-        case 37: *size = __37_img_bz2_len; return __37_img_bz2;
-        case 38: *size = __38_img_bz2_len; return __38_img_bz2;
-        case 39: *size = __39_img_bz2_len; return __39_img_bz2;
-        case 40: *size = __40_img_bz2_len; return __40_img_bz2;
-        case 41: *size = __41_img_bz2_len; return __41_img_bz2;
-        case 42: *size = __42_img_bz2_len; return __42_img_bz2;
-        case 43: *size = __43_img_bz2_len; return __43_img_bz2;
-        case 44: *size = __44_img_bz2_len; return __44_img_bz2;
-        case 45: *size = __45_img_bz2_len; return __45_img_bz2;
-        case 46: *size = __46_img_bz2_len; return __46_img_bz2;
-        case 47: *size = __47_img_bz2_len; return __47_img_bz2;
-        case 48: *size = __48_img_bz2_len; return __48_img_bz2;
-        case 49: *size = __49_img_bz2_len; return __49_img_bz2;
-        case 50: *size = __50_img_bz2_len; return __50_img_bz2;
-        case 51: *size = __51_img_bz2_len; return __51_img_bz2;
-        case 52: *size = __52_img_bz2_len; return __52_img_bz2;
-        case 53: *size = __53_img_bz2_len; return __53_img_bz2;
+        case 0: *file_size = __0_img_lzo_len; *original_size=__0_original; return __0_img_lzo;
+        case 1: *file_size = __1_img_lzo_len; *original_size=__1_original; return __1_img_lzo;
+        case 2: *file_size = __2_img_lzo_len; *original_size=__2_original; return __2_img_lzo;
+        case 3: *file_size = __3_img_lzo_len; *original_size=__3_original; return __3_img_lzo;
+        case 4: *file_size = __4_img_lzo_len; *original_size=__4_original; return __4_img_lzo;
+        case 5: *file_size = __5_img_lzo_len; *original_size=__5_original; return __5_img_lzo;
+        case 6: *file_size = __6_img_lzo_len; *original_size=__6_original; return __6_img_lzo;
+        case 7: *file_size = __7_img_lzo_len; *original_size=__7_original; return __7_img_lzo;
+        case 8: *file_size = __8_img_lzo_len; *original_size=__8_original; return __8_img_lzo;
+        case 9: *file_size = __9_img_lzo_len; *original_size=__9_original; return __9_img_lzo;
+        case 10: *file_size = __10_img_lzo_len; *original_size=__10_original; return __10_img_lzo;
+        case 11: *file_size = __11_img_lzo_len; *original_size=__11_original; return __11_img_lzo;
+        case 12: *file_size = __12_img_lzo_len; *original_size=__12_original; return __12_img_lzo;
+        case 13: *file_size = __13_img_lzo_len; *original_size=__13_original; return __13_img_lzo;
+        case 14: *file_size = __14_img_lzo_len; *original_size=__14_original; return __14_img_lzo;
+        case 15: *file_size = __15_img_lzo_len; *original_size=__15_original; return __15_img_lzo;
+        case 16: *file_size = __16_img_lzo_len; *original_size=__16_original; return __16_img_lzo;
+        case 17: *file_size = __17_img_lzo_len; *original_size=__17_original; return __17_img_lzo;
+        case 18: *file_size = __18_img_lzo_len; *original_size=__18_original; return __18_img_lzo;
+        case 19: *file_size = __19_img_lzo_len; *original_size=__19_original; return __19_img_lzo;
+        case 20: *file_size = __20_img_lzo_len; *original_size=__20_original; return __20_img_lzo;
+        case 21: *file_size = __21_img_lzo_len; *original_size=__21_original; return __21_img_lzo;
+        case 22: *file_size = __22_img_lzo_len; *original_size=__22_original; return __22_img_lzo;
+        case 23: *file_size = __23_img_lzo_len; *original_size=__23_original; return __23_img_lzo;
+        case 24: *file_size = __24_img_lzo_len; *original_size=__24_original; return __24_img_lzo;
+        case 25: *file_size = __25_img_lzo_len; *original_size=__25_original; return __25_img_lzo;
+        case 26: *file_size = __26_img_lzo_len; *original_size=__26_original; return __26_img_lzo;
+        case 27: *file_size = __27_img_lzo_len; *original_size=__27_original; return __27_img_lzo;
+        case 28: *file_size = __28_img_lzo_len; *original_size=__28_original; return __28_img_lzo;
+        case 29: *file_size = __29_img_lzo_len; *original_size=__29_original; return __29_img_lzo;
+        case 30: *file_size = __30_img_lzo_len; *original_size=__30_original; return __30_img_lzo;
+        case 31: *file_size = __31_img_lzo_len; *original_size=__31_original; return __31_img_lzo;
+        case 32: *file_size = __32_img_lzo_len; *original_size=__32_original; return __32_img_lzo;
+        case 33: *file_size = __33_img_lzo_len; *original_size=__33_original; return __33_img_lzo;
+        case 34: *file_size = __34_img_lzo_len; *original_size=__34_original; return __34_img_lzo;
+        case 35: *file_size = __35_img_lzo_len; *original_size=__35_original; return __35_img_lzo;
+        case 36: *file_size = __36_img_lzo_len; *original_size=__36_original; return __36_img_lzo;
+        case 37: *file_size = __37_img_lzo_len; *original_size=__37_original; return __37_img_lzo;
+        case 38: *file_size = __38_img_lzo_len; *original_size=__38_original; return __38_img_lzo;
+        case 39: *file_size = __39_img_lzo_len; *original_size=__39_original; return __39_img_lzo;
+        case 40: *file_size = __40_img_lzo_len; *original_size=__40_original; return __40_img_lzo;
+        case 41: *file_size = __41_img_lzo_len; *original_size=__41_original; return __41_img_lzo;
+        case 42: *file_size = __42_img_lzo_len; *original_size=__42_original; return __42_img_lzo;
+        case 43: *file_size = __43_img_lzo_len; *original_size=__43_original; return __43_img_lzo;
+        case 44: *file_size = __44_img_lzo_len; *original_size=__44_original; return __44_img_lzo;
+        case 45: *file_size = __45_img_lzo_len; *original_size=__45_original; return __45_img_lzo;
+        case 46: *file_size = __46_img_lzo_len; *original_size=__46_original; return __46_img_lzo;
+        case 47: *file_size = __47_img_lzo_len; *original_size=__47_original; return __47_img_lzo;
+        case 48: *file_size = __48_img_lzo_len; *original_size=__48_original; return __48_img_lzo;
+        case 49: *file_size = __49_img_lzo_len; *original_size=__49_original; return __49_img_lzo;
+        case 50: *file_size = __50_img_lzo_len; *original_size=__50_original; return __50_img_lzo;
+        case 51: *file_size = __51_img_lzo_len; *original_size=__51_original; return __51_img_lzo;
+        case 52: *file_size = __52_img_lzo_len; *original_size=__52_original; return __52_img_lzo;
+        case 53: *file_size = __53_img_lzo_len; *original_size=__53_original; return __53_img_lzo;
         default: abort();
     }
 }

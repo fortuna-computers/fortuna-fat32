@@ -25,7 +25,9 @@ public:
     static void print_scenarios(uint16_t spaces_at_start);
     static void generate_disk_creators();
     
-    std::unique_ptr<uint8_t[]> allocate_and_decompress_image() const;
+    static uint8_t* image() { return image_; }
+    
+    void decompress_image() const;
 
 private:
     static constexpr uint8_t   v_partitions[] = { 0, 1, 2 };
@@ -33,7 +35,9 @@ private:
     static constexpr uint16_t  v_disk_size[] = { 64, 256, 1024 };
     static constexpr uint8_t   v_sectors_per_cluster[] = { 1, 8, 32 };
     
-    uint8_t const* link_to_bzip2(uint32_t* size) const;
+    uint8_t const* link_to_bzip2(uint32_t* file_size, uint32_t* original_size) const;
+    
+    static uint8_t image_[1024 * 1024 * 1024];
 };
 
 #endif
