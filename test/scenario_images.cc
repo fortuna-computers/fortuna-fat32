@@ -2,6 +2,8 @@
 
 uint8_t const* Scenario::link_to_bzip2(uint32_t* file_size, uint32_t* original_size) const
 {
+    return 0;
+    /*
 #include "imghdr/0.h"
 #include "imghdr/1.h"
 #include "imghdr/2.h"
@@ -114,5 +116,5 @@ uint8_t const* Scenario::link_to_bzip2(uint32_t* file_size, uint32_t* original_s
         case 53: *file_size = __53_img_lzo_len; *original_size=__53_original; return __53_img_lzo;
         default: abort();
     }
+     */
 }
-

@@ -1,4 +1,6 @@
 FORTUNA_FAT32 = src/ffat32.o
+TEST_OBJ = test/test.o test/scenario.o test/scenario_images.o \
+	test/0.o test/1.o test/2.o test/3.o test/4.o test/5.o test/6.o
 CFLAGS = -std=c11
 CPPFLAGS = -Wall -Wextra -O2
 CXXFLAGS = -std=c++17
@@ -7,9 +9,12 @@ MCU = atmega16
 all: ftest
 
 #ftest: CPPFLAGS += -g -O0
-ftest: ${FORTUNA_FAT32} test/test.o test/scenario.o test/scenario_images.o test/minilzo-2.10/minilzo.c
+ftest: ${FORTUNA_FAT32} ${TEST_OBJ}
 	g++ $^ -o $@
 .PHONY: ftest
+
+test/%.o: test/imghdr/%.img.br
+	objcopy --input binary --output pe-x86-64 --binary-architecture i386:x86-64 $^ $@
 
 size: CC=avr-gcc
 size: CPPFLAGS += -Os -mmcu=${MCU} -ffunction-sections -fdata-sections -mcall-prologues

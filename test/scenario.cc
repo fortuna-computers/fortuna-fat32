@@ -10,19 +10,17 @@ std::vector<Scenario> Scenario::all_scenarios()
 {
     std::vector<Scenario> scenarios;
     
-    uint8_t number = 0;
-    for (auto p: v_partitions) {
-        for (auto st: v_disk_states) {
-            for (auto sz: v_disk_size) {
-                for (auto spc: v_sectors_per_cluster) {
-                    uint32_t total_clusters = (sz * 1024 * 1024) / (spc * 512);
-                    if (total_clusters < 64 * 1024)
-                        continue;
-                    scenarios.emplace_back(number++, p, st, sz, spc);
-                }
-            }
-        }
-    }
+    size_t i = 0;
+    
+    scenarios.emplace_back(i++, 1, DiskState::Empty, 256, 4);
+    scenarios.emplace_back(i++, 1, DiskState::FilesInRoot, 256, 4);
+    scenarios.emplace_back(i++, 1, DiskState::Complete, 256, 4);
+    
+    scenarios.emplace_back(i++, 0, DiskState::Complete, 256, 4);
+    scenarios.emplace_back(i++, 2, DiskState::Complete, 512, 4);
+    
+    scenarios.emplace_back(i++, 1, DiskState::Complete, 64, 1);
+    scenarios.emplace_back(i++, 1, DiskState::Complete, 512, 8);
     
     return scenarios;
 }
@@ -137,21 +135,22 @@ void Scenario::generate_disk_creators()
     
         if (scenario.partitions != 0) {
             // remove loopback devices
-            std::cout << "    sleep 1 && \\\n";
+            std::cout << "    sleep 0.1 && \\\n";
             std::cout << "    kpartx -d " << filename << " && \\\n";
             std::cout << "    losetup && \\\n";
         }
         
         // compress image file
-        std::cout << "    lzop -1 " << filename << " && \\\n";
+        std::cout << "    brotli -j1 " << filename << " && \\\n";
         
         // C-ify image file
-        std::cout << "    xxd -i " << filename << ".lzo > test/imghdr/" << i << ".h && \\\n";
-        std::cout << "    sed -i '1s/^/static const /' test/imghdr/" << i << ".h && \\\n";
-        std::cout << "    echo '\nstatic const size_t __" << i << "_original = " << disk_size * 1024 * 1024 << ";' >> test/imghdr/" << i << ".h && \\\n";
+        // std::cout << "    xxd -i " << filename << ".br > test/imghdr/" << i << ".h && \\\n";
+        // std::cout << "    sed -i '1s/^/static const /' test/imghdr/" << i << ".h && \\\n";
+        // std::cout << "    echo '\nstatic const size_t __" << i << "_original = " << disk_size * 1024 * 1024 << ";' >> test/imghdr/" << i << ".h && \\\n";
         
         // remove image file
-        std::cout << "    rm " << filename << " " << filename << ".lzo && \\\n";
+        // std::cout << "    rm " << filename << " " << filename << ".br && \\\n";
+        std::cout << "    mv " << filename << ".br test/imghdr/ && \\\n";
         std::cout << "    sync .\n";
         
         std::cout << "\n\n";
