@@ -28,10 +28,19 @@ typedef enum {
 
 typedef struct {
     uint8_t* buffer;
-    bool     (*write)(uint32_t block, uint8_t* buffer);
-    bool     (*read)(uint32_t block, uint8_t const* buffer);
+    void*    data;
+    bool     (*write)(uint32_t block, uint8_t const* buffer, void* data);
+    bool     (*read)(uint32_t block, uint8_t* buffer, void* data);
 } FFat32Def;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 uint8_t f_fat32(FFat32Def* def, FFat32Op operation);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -27,7 +27,7 @@ public:
     static uint8_t* image() { return image_; }
     
     void decompress_image() const;
-
+    
 private:
     static constexpr uint8_t   v_partitions[] = { 0, 1, 2 };
     static constexpr DiskState v_disk_states[] = { DiskState::Empty, DiskState::FilesInRoot, DiskState::Complete };

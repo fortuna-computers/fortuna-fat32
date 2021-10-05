@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include "brotli/decode.h"
+#include "../src/ffat32.h"
 
 uint8_t Scenario::image_[512 * 1024 * 1024] = { 0 };
 
@@ -146,4 +147,3 @@ uint8_t const* Scenario::link_to_compressed(size_t* file_size) const
         default: abort();
     }
 }
-
