@@ -35,14 +35,18 @@ static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, 
     std::cout << std::left << std::setw(43) << scenario.name;
     
     scenario.decompress_image();
+    scenario.backup_image();
     
+    size_t i = 0;
     for (Test const& test: tests) {
+        if (i++ == 0)
+            scenario.restore_image_backup();
         test.execute(ffat, scenario);
         if (test.verify(buffer, scenario)) {
             std::cout << " . ";
         } else {
-            std::cout << " X\n";
-            exit(1);
+            std::cout << " X ";
+            // exit(1);
         }
     }
     

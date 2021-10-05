@@ -2,11 +2,13 @@
 
 #include <cmath>
 #include <iostream>
+#include <cstring>
 
 #include "brotli/decode.h"
 #include "../src/ffat32.h"
 
 uint8_t Scenario::image_[512 * 1024 * 1024] = { 0 };
+uint8_t Scenario::backup_[512 * 1024 * 1024] = { 0 };
 
 std::vector<Scenario> Scenario::all_scenarios()
 {
@@ -146,4 +148,14 @@ uint8_t const* Scenario::link_to_compressed(size_t* file_size) const
         case 6: *file_size = (size_t) &_binary_test_imghdr_6_img_br_size; return _binary_test_imghdr_6_img_br_start;
         default: abort();
     }
+}
+
+void Scenario::backup_image()
+{
+    memcpy(image_, backup_, sizeof image_);
+}
+
+void Scenario::restore_image_backup()
+{
+    memcpy(backup_, image_, sizeof image_);
 }

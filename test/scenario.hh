@@ -25,6 +25,8 @@ public:
     static void generate_disk_creators();
     
     static uint8_t* image() { return image_; }
+    static void backup_image();
+    static void restore_image_backup();
     
     void decompress_image() const;
     
@@ -37,6 +39,7 @@ private:
     uint8_t const* link_to_compressed(size_t* file_size) const;
     
     static uint8_t image_[512 * 1024 * 1024];
+    static uint8_t backup_[512 * 1024 * 1024];
 };
 
 #endif
