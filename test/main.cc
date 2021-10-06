@@ -9,6 +9,10 @@
 #include <iostream>
 #include <string>
 
+#define GRN "\e[0;32m"
+#define RED "\e[0;31m"
+#define RST "\e[0m"
+
 extern "C" {
     extern uint8_t* diskio_image;
 }
@@ -24,11 +28,27 @@ std::vector<Test> prepare_tests()
                 f_fat32(ffat, F_LABEL);
             },
             
-            [](uint8_t const* buffer, Scenario const&) {
+            [](uint8_t const* buffer, Scenario const&, FATFS*) {
                 char label[50];
                 if (f_getlabel("", label, nullptr) != FR_OK)
                     abort();
                 return strcmp((char const*) buffer, label) == 0;
+            }
+    );
+    
+    tests.emplace_back(
+            "Check disk space",
+
+            [](FFat32Def* ffat, Scenario const&) {
+                f_fat32(ffat, F_FREE);
+            },
+
+            [](uint8_t const* buffer, Scenario const&, FATFS* fatfs) {
+                uint32_t free = *(uint32_t *) buffer;
+                DWORD found;
+                if (f_getfree("", &found, &fatfs) != FR_OK)
+                    abort();
+                return free == found;
             }
     );
     
@@ -47,21 +67,38 @@ static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, 
         if (i++ == 0)
             Scenario::restore_image_backup();
         diskio_image = Scenario::image();
-    
+        
         f_fat32(ffat, F_INIT);
         
+        FATFS fatfs;
+        f_mount(&fatfs, "", 0);
+        
         test.execute(ffat, scenario);
-        if (test.verify(buffer, scenario)) {
-            std::cout << " . ";
+        if (test.verify(buffer, scenario, &fatfs)) {
+            std::cout << GRN " \u2713 " RST;
         } else {
-            std::cout << " X ";
+            std::cout << RED " X " RST;
             // exit(1);
         }
+    
+        f_mount(nullptr, "", 0);
     }
     
     std::cout << "\n";
 }
 
+
+void print_tests(std::vector<Test>& tests)
+{
+    for (Test const& test: tests)
+        std::cout << test.number << " - " << test.name << "\n";
+    
+    std::cout << std::string(43, ' ');
+    for (Test const& test: tests)
+        std::cout << std::setw(2) << test.number << ' ';
+    std::cout << "\n";
+    std::cout << std::string(80, '-') << "\n";
+}
 
 int main(int argc, char* argv[])
 {
@@ -86,16 +123,7 @@ int main(int argc, char* argv[])
     };
     
     std::vector<Test> tests = prepare_tests();
-    
-    for (Test const& test: tests)
-        std::cout << test.number << " - " << test.name << "\n";
-    
-    std::cout << std::string(43, ' ');
-    for (Test const& test: tests)
-        std::cout << std::setw(2) << test.number << ' ';
-    std::cout << "\n";
-    std::cout << std::string(80, '-') << "\n";
-    
+    print_tests(tests);
     for (Scenario const& scenario: Scenario::all_scenarios())
         run_tests(scenario, tests, &ffat, buffer);
 }
