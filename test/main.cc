@@ -17,43 +17,26 @@ extern "C" {
     extern uint8_t* diskio_image;
 }
 
-std::vector<Test> prepare_tests()
+extern std::vector<Test> prepare_tests();
+
+static void print_test_descriptions(std::vector<Test> const& tests)
 {
-    std::vector<Test> tests;
-    
-    tests.emplace_back(
-            "Check label",
-            
-            [](FFat32Def* ffat, Scenario const&) {
-                f_fat32(ffat, F_LABEL);
-            },
-            
-            [](uint8_t const* buffer, Scenario const&, FATFS*) {
-                char label[50];
-                if (f_getlabel("", label, nullptr) != FR_OK)
-                    abort();
-                return strcmp((char const*) buffer, label) == 0;
-            }
-    );
-    
-    tests.emplace_back(
-            "Check disk space",
-
-            [](FFat32Def* ffat, Scenario const&) {
-                f_fat32(ffat, F_FREE);
-            },
-
-            [](uint8_t const* buffer, Scenario const&, FATFS* fatfs) {
-                uint32_t free = *(uint32_t *) buffer;
-                DWORD found;
-                if (f_getfree("", &found, &fatfs) != FR_OK)
-                    abort();
-                return free == found;
-            }
-    );
-    
-    return tests;
+    char chr = 'A';
+    for (Test const& test: tests)
+        std::cout << chr++ << " - " << test.name << "\n";
 }
+
+
+static void print_headers(std::vector<Test> const& tests)
+{
+    char chr = 'A';
+    std::cout << std::string(43, ' ');
+    for ([[maybe_unused]] Test const& _: tests)
+        std::cout << chr++ << ' ';
+    std::cout << "\n";
+    std::cout << std::string(80, '-') << "\n";
+}
+
 
 static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, FFat32Def* ffat, uint8_t const* buffer)
 {
@@ -64,7 +47,7 @@ static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, 
     
     size_t i = 0;
     for (Test const& test: tests) {
-        if (i++ == 0)
+        if (i++ > 0)
             Scenario::restore_image_backup();
         diskio_image = Scenario::image();
         
@@ -75,9 +58,9 @@ static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, 
         
         test.execute(ffat, scenario);
         if (test.verify(buffer, scenario, &fatfs)) {
-            std::cout << GRN " \u2713 " RST;
+            std::cout << GRN "\u2713 " RST;
         } else {
-            std::cout << RED " X " RST;
+            std::cout << RED "X " RST;
             // exit(1);
         }
     
@@ -87,18 +70,6 @@ static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, 
     std::cout << "\n";
 }
 
-
-void print_tests(std::vector<Test>& tests)
-{
-    for (Test const& test: tests)
-        std::cout << test.number << " - " << test.name << "\n";
-    
-    std::cout << std::string(43, ' ');
-    for (Test const& test: tests)
-        std::cout << std::setw(2) << test.number << ' ';
-    std::cout << "\n";
-    std::cout << std::string(80, '-') << "\n";
-}
 
 int main(int argc, char* argv[])
 {
@@ -123,7 +94,9 @@ int main(int argc, char* argv[])
     };
     
     std::vector<Test> tests = prepare_tests();
-    print_tests(tests);
+    print_test_descriptions(tests);
+    print_headers(tests);
+    
     for (Scenario const& scenario: Scenario::all_scenarios())
         run_tests(scenario, tests, &ffat, buffer);
 }

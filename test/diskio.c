@@ -22,6 +22,7 @@ DSTATUS disk_status (
 	BYTE pdrv		/* Physical drive nmuber to identify the drive */
 )
 {
+    (void) pdrv;
 	return 0;
 }
 
@@ -35,6 +36,7 @@ DSTATUS disk_initialize (
 	BYTE pdrv				/* Physical drive nmuber to identify the drive */
 )
 {
+    (void) pdrv;
 	return 0;
 }
 
@@ -51,6 +53,7 @@ DRESULT disk_read (
 	UINT count		/* Number of sectors to read */
 )
 {
+    (void) pdrv;
     memcpy(buff, &diskio_image[sector * 512], count * 512);
 	return RES_OK;
 }
@@ -70,6 +73,10 @@ DRESULT disk_write (
 	UINT count			/* Number of sectors to write */
 )
 {
+    (void) pdrv;
+    (void) buff;
+    (void) sector;
+    (void) count;
 	return RES_PARERR;
 }
 
@@ -86,6 +93,9 @@ DRESULT disk_ioctl (
 	void *buff		/* Buffer to send/receive control data */
 )
 {
+    (void) pdrv;
+    (void) cmd;
+    (void) buff;
 	return RES_PARERR;
 }
 

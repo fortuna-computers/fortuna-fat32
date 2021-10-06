@@ -9,7 +9,7 @@ typedef struct {
     uint32_t root_dir;
     uint32_t fat_start;
     uint32_t data_start;
-} FFat32Registers;
+} FFat32Variables;
 
 #define BLK_SZ 512
 
