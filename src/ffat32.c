@@ -6,6 +6,11 @@
 
 FFat32Registers reg = { 0 };
 
+#define MBR               0
+#define BOOT_SECTOR       (reg.partition_start + 0x0)
+
+#define PARTITION_TABLE_1 0x1c6
+
 static uint32_t from_32(uint8_t const* buffer, uint16_t pos)
 {
     return *(uint32_t *) &buffer[pos];
@@ -13,10 +18,10 @@ static uint32_t from_32(uint8_t const* buffer, uint16_t pos)
 
 static void f_init(FFat32Def* def)
 {
-    def->read(0, def->buffer, def->data);
+    def->read(MBR, def->buffer, def->data);
     
     if (def->buffer[0] == 0xfa) {  // this is a MBR
-        reg.partition_start = from_32(def->buffer, 0x1c6);
+        reg.partition_start = from_32(def->buffer, PARTITION_TABLE_1);
     } else {
         reg.partition_start = 0;
     }
@@ -25,7 +30,7 @@ static void f_init(FFat32Def* def)
 
 static void f_label(FFat32Def* def)
 {
-    def->read(reg.partition_start + 0, def->buffer, def->data);
+    def->read(BOOT_SECTOR, def->buffer, def->data);
     memcpy(def->buffer, &def->buffer[0x47], 11);
     for (int8_t i = 10; i >= 0; --i) {
         if (def->buffer[i] == ' ')
