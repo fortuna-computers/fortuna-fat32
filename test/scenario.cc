@@ -152,10 +152,10 @@ uint8_t const* Scenario::link_to_compressed(size_t* file_size) const
 
 void Scenario::backup_image()
 {
-    memcpy(image_, backup_, sizeof image_);
+    memcpy(backup_, image_, sizeof image_);
 }
 
 void Scenario::restore_image_backup()
 {
-    memcpy(backup_, image_, sizeof image_);
+    memcpy(image_, backup_, sizeof image_);
 }

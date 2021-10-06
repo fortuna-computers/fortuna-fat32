@@ -8,7 +8,7 @@ MCU = atmega16
 
 all: ftest
 
-#ftest: CPPFLAGS += -g -O0
+ftest: CPPFLAGS += -g -O0
 ftest: ${FORTUNA_FAT32} ${TEST_OBJ}
 	g++ $^ -o $@ `pkg-config --libs libbrotlicommon libbrotlidec`
 .PHONY: ftest
