@@ -9,6 +9,10 @@
 #include <iostream>
 #include <string>
 
+extern "C" {
+    extern uint8_t* diskio_image;
+}
+
 std::vector<Test> prepare_tests()
 {
     std::vector<Test> tests;
@@ -22,7 +26,8 @@ std::vector<Test> prepare_tests()
             
             [](uint8_t const* buffer, Scenario const&) {
                 char label[50];
-                f_getlabel(nullptr, label, nullptr);
+                if (f_getlabel("", label, nullptr) != FR_OK)
+                    abort();
                 return strcmp((char const*) buffer, label) == 0;
             }
     );
@@ -41,6 +46,7 @@ static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, 
     for (Test const& test: tests) {
         if (i++ == 0)
             Scenario::restore_image_backup();
+        diskio_image = Scenario::image();
     
         f_fat32(ffat, F_INIT);
         

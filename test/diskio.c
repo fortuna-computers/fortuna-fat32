@@ -10,6 +10,9 @@
 #include "ff/ff.h"			/* Obtains integer types */
 #include "ff/diskio.h"		/* Declarations of disk functions */
 
+#include <string.h>
+
+uint8_t* diskio_image = 0;
 
 /*-----------------------------------------------------------------------*/
 /* Get Drive Status                                                      */
@@ -19,7 +22,7 @@ DSTATUS disk_status (
 	BYTE pdrv		/* Physical drive nmuber to identify the drive */
 )
 {
-	return STA_NOINIT;
+	return 0;
 }
 
 
@@ -32,7 +35,7 @@ DSTATUS disk_initialize (
 	BYTE pdrv				/* Physical drive nmuber to identify the drive */
 )
 {
-	return STA_NOINIT;
+	return 0;
 }
 
 
@@ -48,7 +51,8 @@ DRESULT disk_read (
 	UINT count		/* Number of sectors to read */
 )
 {
-	return RES_PARERR;
+    memcpy(buff, &diskio_image[sector * 512], count * 512);
+	return RES_OK;
 }
 
 
