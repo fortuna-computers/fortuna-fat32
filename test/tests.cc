@@ -1,6 +1,12 @@
 #include <vector>
 #include <cstring>
+#include <iostream>
 #include "test.hh"
+#include "../src/internal.h"
+
+extern FFat32Variables var;
+
+#define BYTES_PER_SECTOR 512
 
 std::vector<Test> prepare_tests()
 {
@@ -9,7 +15,7 @@ std::vector<Test> prepare_tests()
     tests.emplace_back(
             "Check label",
             
-            [](FFat32Def* ffat, Scenario const&) {
+            [](FFat32* ffat, Scenario const&) {
                 f_fat32(ffat, F_LABEL);
             },
             
@@ -24,7 +30,7 @@ std::vector<Test> prepare_tests()
     tests.emplace_back(
             "Check disk space (pre-existing)",
             
-            [](FFat32Def* ffat, Scenario const&) {
+            [](FFat32* ffat, Scenario const&) {
                 f_fat32(ffat, F_FREE);
             },
             
@@ -33,20 +39,20 @@ std::vector<Test> prepare_tests()
                 DWORD found;
                 if (f_getfree("", &found, &fatfs) != FR_OK)
                     abort();
-                return free == found;
+                std::cout << " [" << free << ", " << found << " (" << (int) var.sectors_per_cluster << ")] ";
+                return free == (found * var.sectors_per_cluster * BYTES_PER_SECTOR);
             }
     );
     
+    /*
     tests.emplace_back(
             "Check disk space (calculate)",
 
-            [](FFat32Def* ffat, Scenario const&) {
-                f_fat32(ffat, F_FREE_RECALCUATE);
+            [](FFat32* ffat, Scenario const&) {
+                f_fat32(ffat, F_FREE_R);
             },
 
             [](uint8_t const* buffer, Scenario const& scenario, FATFS* fatfs) {
-                uint32_t pos = 0x3e8;
-                
                 uint32_t free = *(uint32_t *) buffer;
                 DWORD found;
                 if (f_getfree("", &found, &fatfs) != FR_OK)
@@ -54,6 +60,7 @@ std::vector<Test> prepare_tests()
                 return free == found;
             }
     );
+     */
     
     return tests;
 }

@@ -11,12 +11,12 @@
 class Test {
 public:
     Test(std::string const& name,
-         std::function<void(FFat32Def*, Scenario const&)> execute,
+         std::function<void(FFat32*, Scenario const&)> execute,
          std::function<bool(uint8_t const*, Scenario const&, FATFS*)> verify)
             : name(name), execute(execute), verify(verify) {}
             
     const std::string name;
-    const std::function<void(FFat32Def*, Scenario const&)> execute;
+    const std::function<void(FFat32*, Scenario const&)> execute;
     const std::function<bool(uint8_t const*, Scenario const&, FATFS* fatfs)> verify;
 };
 

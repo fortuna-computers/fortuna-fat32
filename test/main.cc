@@ -38,7 +38,7 @@ static void print_headers(std::vector<Test> const& tests)
 }
 
 
-static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, FFat32Def* ffat, uint8_t const* buffer)
+static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, FFat32* ffat, uint8_t const* buffer)
 {
     std::cout << std::left << std::setw(43) << scenario.name;
     
@@ -80,7 +80,7 @@ int main(int argc, char* argv[])
     
     uint8_t buffer[512];
     
-    FFat32Def ffat {
+    FFat32 ffat {
         buffer,
         Scenario::image(),
         [](uint32_t block, uint8_t const* buffer, void* data) {

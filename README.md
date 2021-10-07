@@ -9,8 +9,9 @@ Disk operations:
 
 | Operation | Description | Input | Output |
 |-----------|-------------|-------|--------|
-| `F_FREE`  | Free disk space | - | `000 - 003`: Space, in bytes |
-| `F_LABEL` | Get volume label | - | `000 - 007`: Volume label |
+| `F_LABEL` | Get volume label | - | `000 - 010`: Volume label |
+| `F_FREE`  | Free disk space (from FSInfo) | - | `000 - 003`: Space, in bytes |
+| `F_FREE_R`  | Free disk space (recalculate from FAT) | - | `000 - 003`: Space, in bytes |
 
 Directory operations (all operations are relative to the current directory):
 

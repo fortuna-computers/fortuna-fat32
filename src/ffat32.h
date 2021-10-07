@@ -11,7 +11,7 @@ typedef enum {
     // disk operations
     F_LABEL   = 0x10,
     F_FREE    = 0x11,
-    F_FREE_RECALCUATE = 0x12,
+    F_FREE_R  = 0x12,
 
     // directory operations
     F_CD      = 0x20,
@@ -35,13 +35,13 @@ typedef struct {
     void*    data;
     bool     (*write)(uint32_t block, uint8_t const* buffer, void* data);   // implement this
     bool     (*read)(uint32_t block, uint8_t* buffer, void* data);          // implement this
-} FFat32Def;
+} FFat32;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-uint8_t f_fat32(FFat32Def* def, FFat32Op operation);
+uint8_t f_fat32(FFat32* def, FFat32Op operation);
 
 #ifdef __cplusplus
 }
