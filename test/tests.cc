@@ -35,15 +35,14 @@ std::vector<Test> prepare_tests()
             },
             
             [](uint8_t const* buffer, Scenario const&, FATFS* fatfs) {
-                uint32_t free = *(uint32_t *) buffer;
+                uint32_t free_ = *(uint32_t *) buffer;
                 DWORD found;
                 if (f_getfree("", &found, &fatfs) != FR_OK)
                     abort();
-                return free == (found * var.sectors_per_cluster * BYTES_PER_SECTOR);
+                return free_ == found;
             }
     );
     
-    /*
     tests.emplace_back(
             "Check disk space (calculate)",
 
@@ -52,14 +51,15 @@ std::vector<Test> prepare_tests()
             },
 
             [](uint8_t const* buffer, Scenario const& scenario, FATFS* fatfs) {
-                uint32_t free = *(uint32_t *) buffer;
+                uint32_t free_ = *(uint32_t *) buffer;
                 DWORD found;
                 if (f_getfree("", &found, &fatfs) != FR_OK)
                     abort();
-                return free == found;
+                return abs((int) free_ - (int) found) < 1024;
+                
+                // TODO - test if value is updated
             }
     );
-     */
     
     return tests;
 }

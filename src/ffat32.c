@@ -17,6 +17,8 @@ FFat32Variables var = { 0 };
 #define PARTITION_TABLE_1 0x1c6
 
 #define BPB_SECTORS_PER_CLUSTER   0xd
+#define BPB_RESERVED_SECTORS      0xe
+#define BPB_FAT_SIZE_SECTORS     0x24
 #define FSI_FREE_COUNT          0x1e8
 
 #define BYTES_PER_SECTOR  512
@@ -24,6 +26,11 @@ FFat32Variables var = { 0 };
 /**********************/
 /*  HELPER FUNCTIONS  */
 /**********************/
+
+static uint16_t from_16(uint8_t const* buffer, uint16_t pos)
+{
+    return *(uint16_t *) &buffer[pos];
+}
 
 static uint32_t from_32(uint8_t const* buffer, uint16_t pos)
 {
@@ -56,6 +63,8 @@ static void f_init(FFat32* f)
     }
     
     var.sectors_per_cluster = f->buffer[BPB_SECTORS_PER_CLUSTER];
+    var.fat_sector_start = from_16(f->buffer, BPB_RESERVED_SECTORS);
+    var.fat_size_sectors = from_32(f->buffer, BPB_FAT_SIZE_SECTORS);
     // TODO - fill out fields
     
     // TODO - check if bytes per sector is correct
@@ -80,6 +89,22 @@ static void f_label(FFat32* f)
 
 static void f_free_r(FFat32* f)
 {
+    uint32_t total = 0;
+    
+    // count free sectors on FAT
+    uint32_t pos = var.fat_sector_start;
+    for (uint32_t i = 0; i < var.fat_size_sectors; ++i) {
+        load_sector(f, pos + i);
+        for (uint32_t j = 0; j < BYTES_PER_SECTOR / 4; ++j) {
+            uint32_t pointer = from_32(f->buffer, j * 4);
+            if (pointer == 0x0)
+                ++total;
+        }
+    }
+    
+    // TODO - update value in FSInfo
+    
+    to_32(f->buffer, 0, total);
 }
 
 static void f_free(FFat32* f)
@@ -89,7 +114,7 @@ static void f_free(FFat32* f)
     if (free_ == 0xffffffff)
         f_free_r(f);
     else
-        to_32(f->buffer, 0, free_ * var.sectors_per_cluster * BYTES_PER_SECTOR);
+        to_32(f->buffer, 0, free_);
 }
 
 /*****************/
