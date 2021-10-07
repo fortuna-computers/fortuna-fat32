@@ -16,8 +16,11 @@ FFat32Variables var = { 0 };
 
 #define PARTITION_TABLE_1 0x1c6
 
+#define BPB_BYTES_PER_SECTOR      0xb
 #define BPB_SECTORS_PER_CLUSTER   0xd
 #define BPB_RESERVED_SECTORS      0xe
+#define BPB_TOTAL_SECTORS_16     0x13
+#define BPB_TOTAL_SECTORS        0x20
 #define BPB_FAT_SIZE_SECTORS     0x24
 #define FSI_FREE_COUNT          0x1e8
 
@@ -56,10 +59,10 @@ static void write_sector(FFat32* f, uint32_t sector)
 /*  INITIALIZATION  */
 /********************/
 
-static void f_init(FFat32* f)
+static FFatResult f_init(FFat32* f)
 {
+    // check partition location
     f->read(MBR, f->buffer, f->data);
-    
     if (f->buffer[0] == 0xfa) {  // this is a MBR
         var.partition_start = from_32(f->buffer, PARTITION_TABLE_1);
         load_sector(f, BOOT_SECTOR);
@@ -67,20 +70,31 @@ static void f_init(FFat32* f)
         var.partition_start = 0;
     }
     
+    // fill out fields
     var.sectors_per_cluster = f->buffer[BPB_SECTORS_PER_CLUSTER];
     var.fat_sector_start = from_16(f->buffer, BPB_RESERVED_SECTORS);
     var.fat_size_sectors = from_32(f->buffer, BPB_FAT_SIZE_SECTORS);
     // TODO - fill out fields
     
-    // TODO - check if bytes per sector is correct
-    // TODO - check if it is FAT32
+    // check if bytes per sector is correct
+    uint16_t bytes_per_sector = from_16(f->buffer, BPB_BYTES_PER_SECTOR);
+    if (bytes_per_sector != 512)
+        return F_BYTES_PER_SECTOR_NOT_512;
+    
+    // check if it is FAT32
+    uint16_t total_sectors_16 = from_16(f->buffer, BPB_TOTAL_SECTORS_16);
+    uint32_t total_sectors_32 = from_32(f->buffer, BPB_TOTAL_SECTORS);
+    if (total_sectors_16 != 0 || total_sectors_32 == 0)
+        return F_NOT_FAT_32;
+    
+    return F_OK;
 }
 
 /*********************/
 /*  DISK OPERATIONS  */
 /*********************/
 
-static void f_label(FFat32* f)
+static FFatResult f_label(FFat32* f)
 {
     load_sector(f, BOOT_SECTOR);
     memcpy(f->buffer, &f->buffer[0x47], 11);
@@ -90,9 +104,11 @@ static void f_label(FFat32* f)
         else
             break;
     }
+    
+    return F_OK;
 }
 
-static void f_free_r(FFat32* f)
+static FFatResult f_free_r(FFat32* f)
 {
     uint32_t total = 0;
     
@@ -113,9 +129,11 @@ static void f_free_r(FFat32* f)
     write_sector(f, FSINFO_SECTOR);
     
     to_32(f->buffer, 0, total);
+    
+    return F_OK;
 }
 
-static void f_free(FFat32* f)
+static FFatResult f_free(FFat32* f)
 {
     load_sector(f, FSINFO_SECTOR);
     uint32_t free_ = from_32(f->buffer, FSI_FREE_COUNT);
@@ -123,6 +141,8 @@ static void f_free(FFat32* f)
         f_free_r(f);
     else
         to_32(f->buffer, 0, free_);
+    
+    return F_OK;
 }
 
 /*****************/
@@ -130,13 +150,13 @@ static void f_free(FFat32* f)
 /*****************/
 
 
-uint8_t f_fat32(FFat32* def, FFat32Op operation)
+FFatResult f_fat32(FFat32* def, FFat32Op operation)
 {
     switch (operation) {
-        case F_INIT: f_init(def); break;
-        case F_FREE: f_free(def); break;
-        case F_FREE_R: f_free_r(def); break;
-        case F_LABEL: f_label(def); break;
+        case F_INIT:   return f_init(def);
+        case F_FREE:   return f_free(def);
+        case F_FREE_R: return f_free_r(def);
+        case F_LABEL:  return f_label(def);
         case F_CD: break;
         case F_DIR: break;
         case F_MKDIR: break;
@@ -148,5 +168,5 @@ uint8_t f_fat32(FFat32* def, FFat32Op operation)
         case F_RM: break;
         case F_MV: break;
     }
-    return 0;
+    return F_INCORRECT_OPERATION;
 }

@@ -30,6 +30,13 @@ typedef enum {
     F_MV      = 0x42,
 } FFat32Op;
 
+typedef enum {
+    F_OK                        = 0x0,
+    F_INCORRECT_OPERATION       = 0x1,
+    F_NOT_FAT_32                = 0x2,
+    F_BYTES_PER_SECTOR_NOT_512  = 0x3,
+} FFatResult;
+
 typedef struct {
     uint8_t* buffer;   // 512 bytes
     void*    data;
@@ -41,7 +48,7 @@ typedef struct {
 extern "C" {
 #endif
 
-uint8_t f_fat32(FFat32* def, FFat32Op operation);
+FFatResult f_fat32(FFat32* def, FFat32Op operation);
 
 #ifdef __cplusplus
 }
