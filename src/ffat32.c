@@ -19,9 +19,11 @@ FFat32Variables var = { 0 };
 #define BPB_BYTES_PER_SECTOR      0xb
 #define BPB_SECTORS_PER_CLUSTER   0xd
 #define BPB_RESERVED_SECTORS      0xe
+#define BPB_NUMBER_OF_FATS       0x10
 #define BPB_TOTAL_SECTORS_16     0x13
 #define BPB_TOTAL_SECTORS        0x20
 #define BPB_FAT_SIZE_SECTORS     0x24
+#define BPB_ROOT_DIR_CLUSTER     0x2c
 #define FSI_FREE_COUNT          0x1e8
 
 #define BYTES_PER_SECTOR  512
@@ -29,6 +31,8 @@ FFat32Variables var = { 0 };
 /**********************/
 /*  HELPER FUNCTIONS  */
 /**********************/
+
+//region ...
 
 static uint16_t from_16(uint8_t const* buffer, uint16_t pos)
 {
@@ -55,9 +59,20 @@ static void write_sector(FFat32* f, uint32_t sector)
     f->write(sector + var.partition_start, f->buffer, f->data);
 }
 
+static uint32_t find_next_cluster_on_fat(FFat32* f, uint32_t cluster)
+{
+    uint32_t sector = var.fat_sector_start + (cluster / 128);
+    load_sector(f, sector);
+    return from_32(f->buffer, cluster % 128);
+}
+
+//endregion
+
 /********************/
 /*  INITIALIZATION  */
 /********************/
+
+//region ...
 
 static FFatResult f_init(FFat32* f)
 {
@@ -74,7 +89,9 @@ static FFatResult f_init(FFat32* f)
     var.sectors_per_cluster = f->buffer[BPB_SECTORS_PER_CLUSTER];
     var.fat_sector_start = from_16(f->buffer, BPB_RESERVED_SECTORS);
     var.fat_size_sectors = from_32(f->buffer, BPB_FAT_SIZE_SECTORS);
-    // TODO - fill out fields
+    
+    uint8_t number_of_fats = f->buffer[BPB_NUMBER_OF_FATS];
+    var.data_start_cluster = (var.fat_sector_start + (number_of_fats * var.fat_size_sectors)) / var.sectors_per_cluster;
     
     // check if bytes per sector is correct
     uint16_t bytes_per_sector = from_16(f->buffer, BPB_BYTES_PER_SECTOR);
@@ -87,12 +104,21 @@ static FFatResult f_init(FFat32* f)
     if (total_sectors_16 != 0 || total_sectors_32 == 0)
         return F_NOT_FAT_32;
     
+    // find root directory
+    uint32_t root_dir_cluster_ptr = from_32(f->buffer, BPB_ROOT_DIR_CLUSTER) - 2;
+    var.root_dir_cluster = var.data_start_cluster + root_dir_cluster_ptr;
+    var.current_dir_cluster = var.root_dir_cluster;
+    
     return F_OK;
 }
+
+//endregion
 
 /*********************/
 /*  DISK OPERATIONS  */
 /*********************/
+
+//region ...
 
 static FFatResult f_label(FFat32* f)
 {
@@ -145,21 +171,36 @@ static FFatResult f_free(FFat32* f)
     return F_OK;
 }
 
+//endregion
+
+/**************************/
+/*  DIRECTORY OPERATIONS  */
+/**************************/
+
+// region ...
+
+static FFatResult f_dir(FFat32* f)
+{
+    return F_OK;
+}
+
+// endregion
+
 /*****************/
 /*  MAIN METHOD  */
 /*****************/
 
-
-FFatResult f_fat32(FFat32* def, FFat32Op operation)
+FFatResult f_fat32(FFat32* f, FFat32Op operation)
 {
     switch (operation) {
-        case F_INIT:   return f_init(def);
-        case F_FREE:   return f_free(def);
-        case F_FREE_R: return f_free_r(def);
-        case F_LABEL:  return f_label(def);
+        case F_INIT:   return f_init(f);
+        case F_FREE:   return f_free(f);
+        case F_FREE_R: return f_free_r(f);
+        case F_LABEL:  return f_label(f);
+        case F_DIR:    return f_dir(f);
         case F_CD: break;
-        case F_DIR: break;
         case F_MKDIR: break;
+        case F_RMDIR: break;
         case F_OPEN: break;
         case F_CLOSE: break;
         case F_READ: break;

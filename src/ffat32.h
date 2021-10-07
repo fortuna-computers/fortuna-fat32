@@ -14,9 +14,10 @@ typedef enum {
     F_FREE_R  = 0x12,
 
     // directory operations
-    F_CD      = 0x20,
-    F_DIR     = 0x21,
-    F_MKDIR   = 0x22,
+    F_DIR     = 0x20,
+    F_MKDIR   = 0x21,
+    F_RMDIR   = 0x22,
+    F_CD      = 0x23,
 
     // file operations
     F_OPEN    = 0x30,
@@ -48,7 +49,7 @@ typedef struct {
 extern "C" {
 #endif
 
-FFatResult f_fat32(FFat32* def, FFat32Op operation);
+FFatResult f_fat32(FFat32* f, FFat32Op operation);
 
 #ifdef __cplusplus
 }
