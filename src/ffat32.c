@@ -47,6 +47,11 @@ static void load_sector(FFat32* f, uint32_t sector)
     f->read(sector + var.partition_start, f->buffer, f->data);
 }
 
+static void write_sector(FFat32* f, uint32_t sector)
+{
+    f->write(sector + var.partition_start, f->buffer, f->data);
+}
+
 /********************/
 /*  INITIALIZATION  */
 /********************/
@@ -103,6 +108,9 @@ static void f_free_r(FFat32* f)
     }
     
     // TODO - update value in FSInfo
+    load_sector(f, FSINFO_SECTOR);
+    to_32(f->buffer, FSI_FREE_COUNT, total);
+    write_sector(f, FSINFO_SECTOR);
     
     to_32(f->buffer, 0, total);
 }

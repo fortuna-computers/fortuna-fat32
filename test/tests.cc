@@ -50,16 +50,32 @@ std::vector<Test> prepare_tests()
                 f_fat32(ffat, F_FREE_R);
             },
 
-            [](uint8_t const* buffer, Scenario const& scenario, FATFS* fatfs) {
+            [](uint8_t const* buffer, Scenario const&, FATFS* fatfs) {
                 uint32_t free_ = *(uint32_t *) buffer;
                 DWORD found;
                 if (f_getfree("", &found, &fatfs) != FR_OK)
                     abort();
                 return abs((int) free_ - (int) found) < 1024;
-                
-                // TODO - test if value is updated
             }
     );
+    
+    {
+        uint32_t free_1st_check, free_2nd_check;
+        tests.emplace_back(
+                "Check disk space (calculate + read)",
+
+                [&](FFat32* ffat, Scenario const&) {
+                    f_fat32(ffat, F_FREE_R);
+                    free_1st_check = *(uint32_t *) ffat->buffer;
+                    f_fat32(ffat, F_FREE);
+                    free_2nd_check = *(uint32_t *) ffat->buffer;
+                },
+                
+                [&](uint8_t const*, Scenario const&, FATFS*) {
+                    return free_1st_check == free_2nd_check;
+                }
+        );
+    }
     
     return tests;
 }
