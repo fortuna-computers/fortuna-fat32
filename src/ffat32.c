@@ -54,6 +54,11 @@ static void load_sector(FFat32* f, uint32_t sector)
     f->read(sector + var.partition_start, f->buffer, f->data);
 }
 
+static void load_cluster(FFat32* f, uint32_t cluster, uint16_t sector)
+{
+    load_sector(f, cluster * var.sectors_per_cluster + sector);
+}
+
 static void write_sector(FFat32* f, uint32_t sector)
 {
     f->write(sector + var.partition_start, f->buffer, f->data);
@@ -94,7 +99,7 @@ static FFatResult f_init(FFat32* f)
     var.data_start_cluster = (var.fat_sector_start + (number_of_fats * var.fat_size_sectors)) / var.sectors_per_cluster;
     
     // check if bytes per sector is correct
-    uint16_t bytes_per_sector = from_16(f->buffer, BPB_BYTES_PER_SECTOR);
+   uint16_t bytes_per_sector = from_16(f->buffer, BPB_BYTES_PER_SECTOR);
     if (bytes_per_sector != 512)
         return F_BYTES_PER_SECTOR_NOT_512;
     
@@ -181,6 +186,11 @@ static FFatResult f_free(FFat32* f)
 
 static FFatResult f_dir(FFat32* f)
 {
+    uint32_t cluster = var.current_dir_cluster;
+    load_cluster(f, cluster, 0);  // TODO
+    
+    // TODO - continue
+    
     return F_OK;
 }
 

@@ -16,15 +16,21 @@ std::vector<Scenario> Scenario::all_scenarios()
     
     size_t i = 0;
     
+    /*
     scenarios.emplace_back(i++, "Standard empty disk", 1, DiskState::Empty, 256, 4);
     scenarios.emplace_back(i++, "Standard disk with files in root dir", 1, DiskState::FilesInRoot, 256, 4);
+     */
     scenarios.emplace_back(i++, "Standard disk with directories and files", 1, DiskState::Complete, 256, 4);
     
+    /*
     scenarios.emplace_back(i++, "Raw image without partitions", 0, DiskState::Complete, 256, 4);
     scenarios.emplace_back(i++, "Image with 2 partitions", 2, DiskState::Complete, 256, 4);
     
     scenarios.emplace_back(i++, "Disk with one sector per cluster", 1, DiskState::Complete, 64, 1);
     scenarios.emplace_back(i++, "Disk with 8 sectors per cluster", 1, DiskState::Complete, 512, 8);
+    
+    scenarios.emplace_back(i++, "Standard disk with 300 files", 1, DiskState::ManyFiles, 256, 4);
+     */
     
     return scenarios;
 }
@@ -34,7 +40,7 @@ void Scenario::generate_disk_creators()
     auto scenarios = all_scenarios();
     
     std::cout << "#!/bin/sh -xe\n\n";
-    std::cout << "mkdir -p mnt test/imghdr\n\n";
+    std::cout << "mkdir -p test/imghdr\n\n";
     
     size_t i = 0;
     for (auto const& scenario: scenarios) {
@@ -73,7 +79,14 @@ void Scenario::generate_disk_creators()
             std::cout << "    mount -o sync,mand,loud " << device_name << " mnt && \\\n";
             
             // copy files
-            std::string origin = scenario.disk_state == DiskState::FilesInRoot ? "rootdir" : "multidir";
+            std::string origin;
+            switch (scenario.disk_state) {
+                case DiskState::FilesInRoot: origin = "rootdir"; break;
+                case DiskState::Complete:    origin = "multidir"; break;
+                case DiskState::ManyFiles:   origin = "manyfiles"; break;
+                case DiskState::Empty:       abort();
+            }
+            
             std::cout << "    cp -R test/" << origin << "/* mnt/ && \\\n";
             std::cout << "    sync mnt && \\\n";
             
@@ -104,8 +117,6 @@ void Scenario::generate_disk_creators()
         std::cout << "\n\n";
         ++i;
     }
-    
-    std::cout << "rmdir mnt\n";
 }
 
 void Scenario::decompress_image() const
@@ -137,6 +148,8 @@ uint8_t const* Scenario::link_to_compressed(size_t* file_size) const
     extern uint8_t _binary_test_imghdr_5_img_br_size;
     extern uint8_t _binary_test_imghdr_6_img_br_start[];
     extern uint8_t _binary_test_imghdr_6_img_br_size;
+    extern uint8_t _binary_test_imghdr_7_img_br_start[];
+    extern uint8_t _binary_test_imghdr_7_img_br_size;
     
     switch (number) {
         case 0: *file_size = (size_t) &_binary_test_imghdr_0_img_br_size; return _binary_test_imghdr_0_img_br_start;
@@ -146,6 +159,7 @@ uint8_t const* Scenario::link_to_compressed(size_t* file_size) const
         case 4: *file_size = (size_t) &_binary_test_imghdr_4_img_br_size; return _binary_test_imghdr_4_img_br_start;
         case 5: *file_size = (size_t) &_binary_test_imghdr_5_img_br_size; return _binary_test_imghdr_5_img_br_start;
         case 6: *file_size = (size_t) &_binary_test_imghdr_6_img_br_size; return _binary_test_imghdr_6_img_br_start;
+        case 7: *file_size = (size_t) &_binary_test_imghdr_7_img_br_size; return _binary_test_imghdr_7_img_br_start;
         default: abort();
     }
 }

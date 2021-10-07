@@ -7,7 +7,7 @@
 
 class Scenario {
 public:
-    enum class DiskState { Empty, FilesInRoot, Complete };
+    enum class DiskState { Empty, FilesInRoot, Complete, ManyFiles };
     
     Scenario(uint8_t number, std::string const& name, uint8_t partitions, DiskState disk_state, uint16_t disk_size, uint16_t sectors_per_cluster)
              : number(number), name(name), partitions(partitions), disk_state(disk_state), disk_size(disk_size),

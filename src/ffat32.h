@@ -33,9 +33,10 @@ typedef enum {
 
 typedef enum {
     F_OK                        = 0x0,
-    F_INCORRECT_OPERATION       = 0x1,
-    F_NOT_FAT_32                = 0x2,
-    F_BYTES_PER_SECTOR_NOT_512  = 0x3,
+    F_MORE_DATA                 = 0x1,
+    F_INCORRECT_OPERATION       = 0x2,
+    F_NOT_FAT_32                = 0x3,
+    F_BYTES_PER_SECTOR_NOT_512  = 0x4,
 } FFatResult;
 
 typedef struct {

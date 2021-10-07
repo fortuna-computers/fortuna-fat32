@@ -17,9 +17,10 @@ Directory operations (all operations are relative to the current directory):
 
 | Operation | Description | Input | Output |
 |-----------|-------------|-------|--------|
-| `F_CD`    | Change directory | Directory name | - |
 | `F_DIR`   | List contents of directory | - | Directory listing (see below)
+| `F_CD`    | Change directory | Directory name | - |
 | `F_MKDIR` | Create a directory | Directory name | - |
+| `F_RMDIR` | Remove a directory | Directory name | - |
 
 File operations:
 
@@ -38,9 +39,11 @@ Operations that work both in files and directories:
 | `F_RM` | Remove file/directory | File/Directory name | - |
 | `F_MV` | Rename/move directory | Old file/directory name, new file/directory name | - |
 
-## Formats
+## Structures
 
-`F_DIR` return value (TODO)
+`F_DIR` result structure:
+
+* same structure as directory entry in FAT32
 
 `F_OPEN` request values (TODO)
 
