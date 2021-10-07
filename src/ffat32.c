@@ -11,12 +11,15 @@ FFat32Variables var = { 0 };
 /***********************/
 
 #define MBR               0
-#define BOOT_SECTOR       (var.partition_start + 0x0)
+#define BOOT_SECTOR       0
+#define FSINFO_SECTOR     1
 
 #define PARTITION_TABLE_1 0x1c6
 
 #define BPB_SECTORS_PER_CLUSTER   0xd
-#define FSI_FREE_COUNT          0x3e8
+#define FSI_FREE_COUNT          0x1e8
+
+#define BYTES_PER_SECTOR  512
 
 /**********************/
 /*  HELPER FUNCTIONS  */
@@ -32,9 +35,9 @@ static void to_32(uint8_t* buffer, uint16_t pos, uint32_t value)
     *(uint32_t *) &buffer[pos] = value;
 }
 
-static void load_boot_sector(FFat32* f)
+static void load_sector(FFat32* f, uint32_t sector)
 {
-    f->read(BOOT_SECTOR, f->buffer, f->data);
+    f->read(sector + var.partition_start, f->buffer, f->data);
 }
 
 /********************/
@@ -47,13 +50,16 @@ static void f_init(FFat32* f)
     
     if (f->buffer[0] == 0xfa) {  // this is a MBR
         var.partition_start = from_32(f->buffer, PARTITION_TABLE_1);
-        load_boot_sector(f);
+        load_sector(f, BOOT_SECTOR);
     } else {
         var.partition_start = 0;
     }
     
     var.sectors_per_cluster = f->buffer[BPB_SECTORS_PER_CLUSTER];
     // TODO - fill out fields
+    
+    // TODO - check if bytes per sector is correct
+    // TODO - check if it is FAT32
 }
 
 /*********************/
@@ -62,7 +68,7 @@ static void f_init(FFat32* f)
 
 static void f_label(FFat32* f)
 {
-    load_boot_sector(f);
+    load_sector(f, BOOT_SECTOR);
     memcpy(f->buffer, &f->buffer[0x47], 11);
     for (int8_t i = 10; i >= 0; --i) {
         if (f->buffer[i] == ' ')
@@ -72,15 +78,18 @@ static void f_label(FFat32* f)
     }
 }
 
-static void f_free(FFat32* f)
-{
-    load_boot_sector(f);
-    uint32_t free_ = from_32(f->buffer, FSI_FREE_COUNT);
-    to_32(f->buffer, 0, free_);
-}
-
 static void f_free_r(FFat32* f)
 {
+}
+
+static void f_free(FFat32* f)
+{
+    load_sector(f, FSINFO_SECTOR);
+    uint32_t free_ = from_32(f->buffer, FSI_FREE_COUNT);
+    if (free_ == 0xffffffff)
+        f_free_r(f);
+    else
+        to_32(f->buffer, 0, free_ * var.sectors_per_cluster * BYTES_PER_SECTOR);
 }
 
 /*****************/

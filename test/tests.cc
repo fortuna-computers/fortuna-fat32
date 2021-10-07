@@ -39,7 +39,6 @@ std::vector<Test> prepare_tests()
                 DWORD found;
                 if (f_getfree("", &found, &fatfs) != FR_OK)
                     abort();
-                std::cout << " [" << free << ", " << found << " (" << (int) var.sectors_per_cluster << ")] ";
                 return free == (found * var.sectors_per_cluster * BYTES_PER_SECTOR);
             }
     );
