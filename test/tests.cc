@@ -37,6 +37,24 @@ std::vector<Test> prepare_tests()
             }
     );
     
+    tests.emplace_back(
+            "Check disk space (calculate)",
+
+            [](FFat32Def* ffat, Scenario const&) {
+                f_fat32(ffat, F_FREE_RECALCUATE);
+            },
+
+            [](uint8_t const* buffer, Scenario const& scenario, FATFS* fatfs) {
+                uint32_t pos = 0x3e8;
+                
+                uint32_t free = *(uint32_t *) buffer;
+                DWORD found;
+                if (f_getfree("", &found, &fatfs) != FR_OK)
+                    abort();
+                return free == found;
+            }
+    );
+    
     return tests;
 }
 

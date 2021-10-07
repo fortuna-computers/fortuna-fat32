@@ -9,8 +9,9 @@ typedef enum {
     F_INIT    = 0x00,
     
     // disk operations
-    F_FREE    = 0x10,
-    F_LABEL   = 0x11,
+    F_LABEL   = 0x10,
+    F_FREE    = 0x11,
+    F_FREE_RECALCUATE = 0x12,
 
     // directory operations
     F_CD      = 0x20,
