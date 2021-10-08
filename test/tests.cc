@@ -16,7 +16,8 @@ struct File {
     File(std::string const& name, uint8_t attr, uint32_t size) : name(name), attr(attr), size(size) {}
 };
 
-std::vector<File> directory;
+static std::vector<File> directory;
+static FFatResult result;
 
 // endregion
 
@@ -181,6 +182,35 @@ std::vector<Test> prepare_tests()
                     
                     return true;
                 }
+        );
+        
+        tests.emplace_back(
+                "cd to directory",
+
+                [&](FFat32* ffat, Scenario const&) {
+                    result = f_fat32(ffat, F_CD);
+                    f_fat32(ffat, F_DIR);
+                },
+
+                [&](uint8_t const* buffer, Scenario const& scenario, FATFS*) {
+                    if (scenario.disk_state == Scenario::DiskState::Complete) {
+                        if (result != F_OK)
+                            return false;
+                        add_files_to_dir_structure(buffer, directory);  // read files in directory
+                        if (std::find_if(directory.begin(), directory.end(),
+                                         [](File const& file) { return file.name == "FORTUNA"; }) == directory.end())
+                            return false;
+                        if (std::find_if(directory.begin(), directory.end(),
+                                         [](File const& file) { return file.name == "WORLD"; }) == directory.end())
+                            return false;
+                        
+                        return true;
+                        
+                    } else {
+                        return result == F_INEXISTENT_DIRECTORY;
+                    }
+                }
+                
         );
     }
     

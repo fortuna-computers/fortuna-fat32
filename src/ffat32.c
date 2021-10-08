@@ -193,7 +193,7 @@ static FFatResult f_free(FFat32* f)
 /*  DIRECTORY OPERATIONS  */
 /**************************/
 
-// region ...
+// region `f_dir` ...
 
 static FFatResult f_dir(FFat32* f)
 {
@@ -244,6 +244,37 @@ static FFatResult f_dir(FFat32* f)
 
 // endregion
 
+// region `f_cd` ...
+
+static FFatResult f_cd(FFat32* f)
+{
+    char filename[12] = { 0 };
+    strncpy(filename, (const char *) f->buffer, 11);
+    uint8_t file_len = strlen(filename);
+    
+    // load current directory
+    FFatResult result;
+    do {
+        result = f_dir(f);
+        if (result != F_OK && result != F_MORE_DATA)
+            return result;
+        
+        for (uint16_t i = 0; i < (512 / 32); ++i) {
+            uint16_t addr = i * 32;
+            uint8_t attr = f->buffer[addr + 11];   // attribute should be 0x10
+            if ((attr & 0x10) && strncmp(filename, (const char *) &f->buffer[addr], file_len) == 0) {
+                uint32_t cluster =
+                    (*(uint16_t *)  // TODO ...
+            }
+        }
+    } while (result == F_MORE_DATA);
+    
+    // iterate through result
+    // if found, change current directory
+}
+
+// endregion
+
 /*****************/
 /*  MAIN METHOD  */
 /*****************/
@@ -256,7 +287,7 @@ FFatResult f_fat32(FFat32* f, FFat32Op operation)
         case F_FREE_R: f->reg.F_RSLT = f_free_r(f); break;
         case F_LABEL:  f->reg.F_RSLT = f_label(f);  break;
         case F_DIR:    f->reg.F_RSLT = f_dir(f);    break;
-        case F_CD: break;
+        case F_CD:     f->reg.F_RSLT = f_cd(f);     break;
         case F_MKDIR: break;
         case F_RMDIR: break;
         case F_OPEN: break;
