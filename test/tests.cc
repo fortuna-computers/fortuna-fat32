@@ -137,10 +137,8 @@ std::vector<Test> prepare_tests()
         {
             auto it = std::find_if(directory.begin(), directory.end(),
                                    [&](File const& file) { return file.name == std::string(filinfo->fname); });
-            if (it == directory.end()) {
-                std::cerr << filinfo->fname << std::endl;
+            if (it == directory.end())
                 return false;
-            }
             
             return it->size == filinfo->fsize;
         };

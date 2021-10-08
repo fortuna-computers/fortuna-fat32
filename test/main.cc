@@ -103,10 +103,8 @@ int main(int argc, char* argv[])
     print_test_descriptions(tests);
     print_headers(tests);
     
-    /*
     for (Scenario const& scenario: Scenario::all_scenarios())
         run_tests(scenario, tests, &ffat, buffer);
-    */
-    run_tests(Scenario::all_scenarios().at(7), tests, &ffat, buffer);
+    // run_tests(Scenario::all_scenarios().at(7), tests, &ffat, buffer);
 }
 

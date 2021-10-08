@@ -74,14 +74,12 @@ static void write_sector(FFat32* f, uint32_t sector)
 
 static uint32_t find_next_cluster_on_fat(FFat32* f, uint32_t cluster)
 {
-    uint32_t cluster_rel = cluster - var.data_start_cluster + 2;
-    uint32_t cluster_loc = cluster_rel * 4;
-    uint32_t sector_to_load = cluster_rel / 128;
+    uint32_t cluster_loc = cluster * 4;
+    uint32_t sector_to_load = cluster_loc / 512;
     
     load_sector(f, var.fat_sector_start + sector_to_load);
     
-    uint32_t cluster_location_within_fat_sector = cluster_loc % 128;
-    return from_32(f->buffer, cluster_location_within_fat_sector);
+    return from_32(f->buffer, cluster_loc % 512);
 }
 
 //endregion
@@ -123,8 +121,8 @@ static FFatResult f_init(FFat32* f)
         return F_NOT_FAT_32;
     
     // find root directory
-    uint32_t root_dir_cluster_ptr = from_32(f->buffer, BPB_ROOT_DIR_CLUSTER) - 2;
-    var.root_dir_cluster = var.data_start_cluster + root_dir_cluster_ptr;
+    uint32_t root_dir_cluster_ptr = from_32(f->buffer, BPB_ROOT_DIR_CLUSTER);
+    var.root_dir_cluster = root_dir_cluster_ptr;
     var.current_dir_cluster = var.root_dir_cluster;
     
     return F_OK;
@@ -216,7 +214,7 @@ static FFatResult f_dir(FFat32* f)
     uint32_t next_cluster, next_sector;
     if (sector >= (var.sectors_per_cluster - 1)) {
         next_cluster = find_next_cluster_on_fat(f, cluster);
-        sector = 0;
+        next_sector = 0;
     } else {
         next_cluster = cluster;
         next_sector = sector + 1;
@@ -233,7 +231,7 @@ static FFatResult f_dir(FFat32* f)
     }
     
     // load directory data form sector into buffer
-    load_cluster(f, cluster, sector);
+    load_cluster(f, cluster + var.data_start_cluster - 2, sector);
     
     // check if we really have more data to read (the last dir in array is not null)
     if (result == F_MORE_DATA && f->buffer[512 - 32] == '\0') {
