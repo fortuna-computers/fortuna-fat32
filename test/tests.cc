@@ -9,6 +9,20 @@ extern FFat32Variables var;
 
 #define BYTES_PER_SECTOR 512
 
+// region Utils
+
+struct File {
+    std::string name;
+    uint8_t     attr;
+    uint32_t    size;
+    
+    File(std::string const& name, uint8_t attr, uint32_t size) : name(name), attr(attr), size(size) {}
+};
+
+std::vector<File> directory;
+
+// endregion
+
 std::vector<Test> prepare_tests()
 {
     std::vector<Test> tests;
@@ -93,29 +107,44 @@ std::vector<Test> prepare_tests()
     // region ...
     
     {
-        struct File {
-            std::string name;
-            bool        is_dir;
-            uint32_t    size;
-    
-            File(std::string const& name, bool is_dir, uint32_t size) : name(name), is_dir(is_dir), size(size) {}
+        auto build_name = [](const char* name) {
+            std::string filename = std::string(name, 8);
+            while (filename.back() == ' ')
+                filename.pop_back();
+                
+            std::string extension = std::string(&name[8]);
+            while (extension.back() == ' ')
+                extension.pop_back();
+            
+            if (extension.empty())
+                return filename;
+            else
+                return filename + "." + extension;
         };
         
-        auto add_files_to_dir_structure = [](uint8_t const* buffer, std::vector<File>& directory)
+        auto add_files_to_dir_structure = [&](uint8_t const* buffer, std::vector<File>& directory)
         {
             for (size_t i = 0; i < 512 / 32; ++i) {
                 if (buffer[i * 32] == 0)
                     break;
                 char buf[12] = { 0 };
                 strncpy(buf, (char*) &buffer[i * 32], 11);
-                std::string name = std::string(buf);
+                std::string name = build_name(buf);
                 bool is_dir = buffer[i * 32 + 0xb];
                 uint32_t size = *(uint32_t *) &buffer[i * 32 + 0x1c];
                 directory.emplace_back(name, is_dir, size);
             }
         };
         
-        std::vector<File> directory;
+        auto find_file_in_directory = [](FILINFO const* filinfo, std::vector<File>& directory)
+        {
+            auto it = std::find_if(directory.begin(), directory.end(),
+                                   [&](File const& file) { return file.name == std::string(filinfo->fname); });
+            if (it == directory.end())
+                return false;
+            
+            return it->size == filinfo->fsize;
+        };
         
         tests.emplace_back(
                 "Check directories",
@@ -132,7 +161,28 @@ std::vector<Test> prepare_tests()
                 },
                 
                 [&](uint8_t const*, Scenario const&, FATFS*) {
-                    return false;
+                    DIR dp;
+                    FILINFO filinfo;
+                    if (f_opendir(&dp, "/") != FR_OK)
+                        throw std::runtime_error("`f_opendir` reported error");
+                    
+                    size_t count = 0;
+                    for (;;) {
+                        if (f_readdir(&dp, &filinfo)  != FR_OK)
+                            throw std::runtime_error("`f_readdir` reported error");
+                        
+                        if (filinfo.fname[0] == '\0')
+                            break;
+                        
+                        if (!find_file_in_directory(&filinfo, directory))
+                            return false;
+                        
+                    }
+                    
+                    if (f_closedir(&dp) != FR_OK)
+                        throw std::runtime_error("`f_opendir` reported error");
+                    
+                    return true;
                 }
         );
     }
