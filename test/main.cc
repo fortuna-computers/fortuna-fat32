@@ -86,23 +86,27 @@ int main(int argc, char* argv[])
     uint8_t buffer[512];
     
     FFat32 ffat {
-        buffer,
-        Scenario::image(),
-        [](uint32_t block, uint8_t const* buffer, void* data) {
+        .buffer = buffer,
+        .data = Scenario::image(),
+        .write = [](uint32_t block, uint8_t const* buffer, void* data) {
             memcpy(&((char*) data)[block * 512], buffer, 512);
             return true;
         },
-        [](uint32_t block, uint8_t* buffer, void* data) {
+        .read = [](uint32_t block, uint8_t* buffer, void* data) {
             memcpy(buffer, &((char const*) data)[block * 512], 512);
             return true;
-        }
+        },
+        .reg = { .F_RSLT = F_OK, .F_NXTC = 0, .F_NXTS = 0 }
     };
     
     std::vector<Test> tests = prepare_tests();
     print_test_descriptions(tests);
     print_headers(tests);
     
+    /*
     for (Scenario const& scenario: Scenario::all_scenarios())
         run_tests(scenario, tests, &ffat, buffer);
+    */
+    run_tests(Scenario::all_scenarios().at(7), tests, &ffat, buffer);
 }
 

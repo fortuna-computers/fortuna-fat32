@@ -1,6 +1,10 @@
 # fortuna-fat32
 A very small (&lt; 8 kB) and memory conscious (&lt; 40 bytes + a shared 512 byte buffer) C ANSI code for accessing FAT32 images. Compilable to both AVR and x64, for use in Fortuna computers and emulator.
 
+## Special registers
+
+* `F_RSLT`: result of the last operation
+
 ## Supported operations
 
 All operations return 0 on success or various errors.
@@ -17,7 +21,7 @@ Directory operations (all operations are relative to the current directory):
 
 | Operation | Description | Input | Output |
 |-----------|-------------|-------|--------|
-| `F_DIR`   | List contents of directory | - | Directory listing (see below)
+| `F_DIR`   | List contents of current directory | `0`: start over; `1`: continue | Directory listing (see below)
 | `F_CD`    | Change directory | Directory name | - |
 | `F_MKDIR` | Create a directory | Directory name | - |
 | `F_RMDIR` | Remove a directory | Directory name | - |

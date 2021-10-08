@@ -3,9 +3,6 @@
 #include <iostream>
 #include <string>
 #include "test.hh"
-#include "../src/internal.h"
-
-extern FFat32Variables var;
 
 #define BYTES_PER_SECTOR 512
 
@@ -140,8 +137,10 @@ std::vector<Test> prepare_tests()
         {
             auto it = std::find_if(directory.begin(), directory.end(),
                                    [&](File const& file) { return file.name == std::string(filinfo->fname); });
-            if (it == directory.end())
+            if (it == directory.end()) {
+                std::cerr << filinfo->fname << std::endl;
                 return false;
+            }
             
             return it->size == filinfo->fsize;
         };
@@ -152,11 +151,13 @@ std::vector<Test> prepare_tests()
                 [&](FFat32* ffat, Scenario const&) {
                     directory.clear();
                     FFatResult r;
+                    ffat->buffer[0] = F_START_OVER;
                     do {
                         r = f_fat32(ffat, F_DIR);
                         if (r != F_OK && r != F_MORE_DATA)
                             throw std::runtime_error("F_DIR reported error " + std::to_string(r));
                         add_files_to_dir_structure(ffat->buffer, directory);
+                        ffat->buffer[0] = F_CONTINUE;
                     } while (r == F_MORE_DATA);
                 },
                 
@@ -166,7 +167,6 @@ std::vector<Test> prepare_tests()
                     if (f_opendir(&dp, "/") != FR_OK)
                         throw std::runtime_error("`f_opendir` reported error");
                     
-                    size_t count = 0;
                     for (;;) {
                         if (f_readdir(&dp, &filinfo)  != FR_OK)
                             throw std::runtime_error("`f_readdir` reported error");
@@ -176,7 +176,6 @@ std::vector<Test> prepare_tests()
                         
                         if (!find_file_in_directory(&filinfo, directory))
                             return false;
-                        
                     }
                     
                     if (f_closedir(&dp) != FR_OK)

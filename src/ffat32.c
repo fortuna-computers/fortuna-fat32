@@ -2,9 +2,17 @@
 
 #include <string.h>
 
-#include "internal.h"
+typedef struct {
+    uint32_t partition_start;
+    uint8_t  sectors_per_cluster;
+    uint32_t fat_sector_start;
+    uint32_t fat_size_sectors;
+    uint32_t data_start_cluster;
+    uint32_t root_dir_cluster;
+    uint32_t current_dir_cluster;
+} FFat32Variables;
 
-FFat32Variables var = { 0 };
+static FFat32Variables var = { 0 };
 
 /***********************/
 /*  LOCATIONS ON DISK  */
@@ -66,9 +74,14 @@ static void write_sector(FFat32* f, uint32_t sector)
 
 static uint32_t find_next_cluster_on_fat(FFat32* f, uint32_t cluster)
 {
-    uint32_t sector = var.fat_sector_start + (cluster / 128);
-    load_sector(f, sector);
-    return from_32(f->buffer, cluster % 128);
+    uint32_t cluster_rel = cluster - var.data_start_cluster + 2;
+    uint32_t cluster_loc = cluster_rel * 4;
+    uint32_t sector_to_load = cluster_rel / 128;
+    
+    load_sector(f, var.fat_sector_start + sector_to_load);
+    
+    uint32_t cluster_location_within_fat_sector = cluster_loc % 128;
+    return from_32(f->buffer, cluster_location_within_fat_sector);
 }
 
 //endregion
@@ -186,12 +199,49 @@ static FFatResult f_free(FFat32* f)
 
 static FFatResult f_dir(FFat32* f)
 {
-    uint32_t cluster = var.current_dir_cluster;
-    load_cluster(f, cluster, 0);  // TODO
+    FFatResult result;
+    uint32_t cluster;
+    uint16_t sector;
     
-    // TODO - continue
+    // find current cluster and sector
+    if (f->buffer[0] == F_START_OVER) {   // user has requested to start reading a new directory
+        cluster = var.current_dir_cluster;
+        sector = 0;
+    } else {   // user is continuing to read a directory that was started in a previous call
+        cluster = f->reg.F_NXTC;
+        sector = f->reg.F_NXTS;
+    }
     
-    return F_OK;
+    // move to next cluster and/or sector
+    uint32_t next_cluster, next_sector;
+    if (sector >= (var.sectors_per_cluster - 1)) {
+        next_cluster = find_next_cluster_on_fat(f, cluster);
+        sector = 0;
+    } else {
+        next_cluster = cluster;
+        next_sector = sector + 1;
+    }
+    
+    // feed F_NXT registers
+    if (next_cluster == 0x0ffffff8 || next_cluster == 0x0fffffff) {
+        f->reg.F_NXTC = f->reg.F_NXTS = 0;
+        result = F_OK;
+    } else {
+        f->reg.F_NXTC = next_cluster;
+        f->reg.F_NXTS = next_sector;
+        result = F_MORE_DATA;
+    }
+    
+    // load directory data form sector into buffer
+    load_cluster(f, cluster, sector);
+    
+    // check if we really have more data to read (the last dir in array is not null)
+    if (result == F_MORE_DATA && f->buffer[512 - 32] == '\0') {
+        f->reg.F_NXTC = f->reg.F_NXTS = 0;
+        result = F_OK;
+    }
+    
+    return result;
 }
 
 // endregion
@@ -203,11 +253,11 @@ static FFatResult f_dir(FFat32* f)
 FFatResult f_fat32(FFat32* f, FFat32Op operation)
 {
     switch (operation) {
-        case F_INIT:   return f_init(f);
-        case F_FREE:   return f_free(f);
-        case F_FREE_R: return f_free_r(f);
-        case F_LABEL:  return f_label(f);
-        case F_DIR:    return f_dir(f);
+        case F_INIT:   f->reg.F_RSLT = f_init(f);   break;
+        case F_FREE:   f->reg.F_RSLT = f_free(f);   break;
+        case F_FREE_R: f->reg.F_RSLT = f_free_r(f); break;
+        case F_LABEL:  f->reg.F_RSLT = f_label(f);  break;
+        case F_DIR:    f->reg.F_RSLT = f_dir(f);    break;
         case F_CD: break;
         case F_MKDIR: break;
         case F_RMDIR: break;
@@ -218,6 +268,8 @@ FFatResult f_fat32(FFat32* f, FFat32Op operation)
         case F_STAT: break;
         case F_RM: break;
         case F_MV: break;
+        // TODO - find file
+        default: f->reg.F_RSLT = F_INCORRECT_OPERATION;
     }
-    return F_INCORRECT_OPERATION;
+    return f->reg.F_RSLT;
 }

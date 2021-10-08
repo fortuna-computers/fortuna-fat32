@@ -39,11 +39,23 @@ typedef enum {
     F_BYTES_PER_SECTOR_NOT_512  = 0x4,
 } FFatResult;
 
+typedef enum {
+    F_START_OVER = 0,
+    F_CONTINUE   = 1,
+} FContinuation;
+
 typedef struct {
-    uint8_t* buffer;   // 512 bytes
-    void*    data;
-    bool     (*write)(uint32_t block, uint8_t const* buffer, void* data);   // implement this
-    bool     (*read)(uint32_t block, uint8_t* buffer, void* data);          // implement this
+    FFatResult F_RSLT;    // result of the last operation
+    uint32_t   F_NXTC;    // keeps state for multi-call operations (such as F_DIR, F_READ, F_WRITE): next cluster
+    uint32_t   F_NXTS;    // keeps state for multi-call operations (such as F_DIR, F_READ, F_WRITE): next sector
+} FFatRegisters;
+
+typedef struct {
+    uint8_t*      buffer;   // 512 bytes
+    void*         data;
+    bool          (*write)(uint32_t block, uint8_t const* buffer, void* data);   // implement this
+    bool          (*read)(uint32_t block, uint8_t* buffer, void* data);          // implement this
+    FFatRegisters reg;
 } FFat32;
 
 #ifdef __cplusplus
