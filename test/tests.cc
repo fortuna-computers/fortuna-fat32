@@ -188,7 +188,9 @@ std::vector<Test> prepare_tests()
                 "cd to directory",
 
                 [&](FFat32* ffat, Scenario const&) {
+                    strcpy(reinterpret_cast<char*>(ffat->buffer), "HELLO");
                     result = f_fat32(ffat, F_CD);
+                    ffat->buffer[0] = F_START_OVER;
                     f_fat32(ffat, F_DIR);
                 },
 

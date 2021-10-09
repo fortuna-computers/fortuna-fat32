@@ -2,18 +2,6 @@
 
 #include <string.h>
 
-typedef struct {
-    uint32_t partition_start;
-    uint8_t  sectors_per_cluster;
-    uint32_t fat_sector_start;
-    uint32_t fat_size_sectors;
-    uint32_t data_start_cluster;
-    uint32_t root_dir_cluster;
-    uint32_t current_dir_cluster;
-} FFat32Variables;
-
-static FFat32Variables var = { 0 };
-
 /***********************/
 /*  LOCATIONS ON DISK  */
 /***********************/
@@ -22,7 +10,7 @@ static FFat32Variables var = { 0 };
 #define BOOT_SECTOR       0
 #define FSINFO_SECTOR     1
 
-#define PARTITION_TABLE_1 0x1c6
+#define PARTITION_TABLE_1       0x1c6
 
 #define BPB_BYTES_PER_SECTOR      0xb
 #define BPB_SECTORS_PER_CLUSTER   0xd
@@ -32,9 +20,25 @@ static FFat32Variables var = { 0 };
 #define BPB_TOTAL_SECTORS        0x20
 #define BPB_FAT_SIZE_SECTORS     0x24
 #define BPB_ROOT_DIR_CLUSTER     0x2c
+#define BPB_LABEL                0x47
 #define FSI_FREE_COUNT          0x1e8
 
+#define LABEL_SZ           11
+
 #define BYTES_PER_SECTOR  512
+#define DIR_STRUCT_SZ      32
+#define FILENAME_SZ        11
+
+#define FAT_EOF    0x0fffffff
+#define FAT_EOC    0x0ffffff8
+
+#define DIR_FILENAME      0x0
+#define DIR_ATTR          0xb
+#define DIR_CLUSTER_HIGH 0x14
+#define DIR_CLUSTER_LOW  0x1a
+
+#define ATTR_DIR     0x10
+
 
 /**********************/
 /*  HELPER FUNCTIONS  */
@@ -59,27 +63,27 @@ static void to_32(uint8_t* buffer, uint16_t pos, uint32_t value)
 
 static void load_sector(FFat32* f, uint32_t sector)
 {
-    f->read(sector + var.partition_start, f->buffer, f->data);
+    f->read(sector + f->reg.partition_start, f->buffer, f->data);
 }
 
 static void load_cluster(FFat32* f, uint32_t cluster, uint16_t sector)
 {
-    load_sector(f, cluster * var.sectors_per_cluster + sector);
+    load_sector(f, cluster * f->reg.sectors_per_cluster + sector);
 }
 
 static void write_sector(FFat32* f, uint32_t sector)
 {
-    f->write(sector + var.partition_start, f->buffer, f->data);
+    f->write(sector + f->reg.partition_start, f->buffer, f->data);
 }
 
 static uint32_t find_next_cluster_on_fat(FFat32* f, uint32_t cluster)
 {
     uint32_t cluster_loc = cluster * 4;
-    uint32_t sector_to_load = cluster_loc / 512;
+    uint32_t sector_to_load = cluster_loc / BYTES_PER_SECTOR;
     
-    load_sector(f, var.fat_sector_start + sector_to_load);
+    load_sector(f, f->reg.fat_sector_start + sector_to_load);
     
-    return from_32(f->buffer, cluster_loc % 512);
+    return from_32(f->buffer, cluster_loc % BYTES_PER_SECTOR);
 }
 
 //endregion
@@ -95,23 +99,23 @@ static FFatResult f_init(FFat32* f)
     // check partition location
     f->read(MBR, f->buffer, f->data);
     if (f->buffer[0] == 0xfa) {  // this is a MBR
-        var.partition_start = from_32(f->buffer, PARTITION_TABLE_1);
+        f->reg.partition_start = from_32(f->buffer, PARTITION_TABLE_1);
         load_sector(f, BOOT_SECTOR);
     } else {
-        var.partition_start = 0;
+        f->reg.partition_start = 0;
     }
     
     // fill out fields
-    var.sectors_per_cluster = f->buffer[BPB_SECTORS_PER_CLUSTER];
-    var.fat_sector_start = from_16(f->buffer, BPB_RESERVED_SECTORS);
-    var.fat_size_sectors = from_32(f->buffer, BPB_FAT_SIZE_SECTORS);
+    f->reg.sectors_per_cluster = f->buffer[BPB_SECTORS_PER_CLUSTER];
+    f->reg.fat_sector_start = from_16(f->buffer, BPB_RESERVED_SECTORS);
+    f->reg.fat_size_sectors = from_32(f->buffer, BPB_FAT_SIZE_SECTORS);
     
     uint8_t number_of_fats = f->buffer[BPB_NUMBER_OF_FATS];
-    var.data_start_cluster = (var.fat_sector_start + (number_of_fats * var.fat_size_sectors)) / var.sectors_per_cluster;
+    f->reg.data_start_cluster = (f->reg.fat_sector_start + (number_of_fats * f->reg.fat_size_sectors)) / f->reg.sectors_per_cluster;
     
     // check if bytes per sector is correct
    uint16_t bytes_per_sector = from_16(f->buffer, BPB_BYTES_PER_SECTOR);
-    if (bytes_per_sector != 512)
+    if (bytes_per_sector != BYTES_PER_SECTOR)
         return F_BYTES_PER_SECTOR_NOT_512;
     
     // check if it is FAT32
@@ -122,8 +126,8 @@ static FFatResult f_init(FFat32* f)
     
     // find root directory
     uint32_t root_dir_cluster_ptr = from_32(f->buffer, BPB_ROOT_DIR_CLUSTER);
-    var.root_dir_cluster = root_dir_cluster_ptr;
-    var.current_dir_cluster = var.root_dir_cluster;
+    f->reg.root_dir_cluster = root_dir_cluster_ptr;
+    f->reg.current_dir_cluster = f->reg.root_dir_cluster;
     
     return F_OK;
 }
@@ -139,8 +143,8 @@ static FFatResult f_init(FFat32* f)
 static FFatResult f_label(FFat32* f)
 {
     load_sector(f, BOOT_SECTOR);
-    memcpy(f->buffer, &f->buffer[0x47], 11);
-    for (int8_t i = 10; i >= 0; --i) {
+    memcpy(f->buffer, &f->buffer[BPB_LABEL], LABEL_SZ);
+    for (int8_t i = LABEL_SZ - 1; i >= 0; --i) {
         if (f->buffer[i] == ' ')
             f->buffer[i] = '\0';
         else
@@ -155,8 +159,8 @@ static FFatResult f_free_r(FFat32* f)
     uint32_t total = 0;
     
     // count free sectors on FAT
-    uint32_t pos = var.fat_sector_start;
-    for (uint32_t i = 0; i < var.fat_size_sectors; ++i) {
+    uint32_t pos = f->reg.fat_sector_start;
+    for (uint32_t i = 0; i < f->reg.fat_size_sectors; ++i) {
         load_sector(f, pos + i);
         for (uint32_t j = 0; j < BYTES_PER_SECTOR / 4; ++j) {
             uint32_t pointer = from_32(f->buffer, j * 4);
@@ -165,7 +169,6 @@ static FFatResult f_free_r(FFat32* f)
         }
     }
     
-    // TODO - update value in FSInfo
     load_sector(f, FSINFO_SECTOR);
     to_32(f->buffer, FSI_FREE_COUNT, total);
     write_sector(f, FSINFO_SECTOR);
@@ -203,16 +206,16 @@ static FFatResult f_dir(FFat32* f)
     
     // find current cluster and sector
     if (f->buffer[0] == F_START_OVER) {   // user has requested to start reading a new directory
-        cluster = var.current_dir_cluster;
+        cluster = f->reg.current_dir_cluster;
         sector = 0;
     } else {   // user is continuing to read a directory that was started in a previous call
-        cluster = f->reg.F_NXTC;
-        sector = f->reg.F_NXTS;
+        cluster = f->reg.state_next_cluster;
+        sector = f->reg.state_next_sector;
     }
     
     // move to next cluster and/or sector
     uint32_t next_cluster, next_sector;
-    if (sector >= (var.sectors_per_cluster - 1)) {
+    if (sector >= (f->reg.sectors_per_cluster - 1U)) {
         next_cluster = find_next_cluster_on_fat(f, cluster);
         next_sector = 0;
     } else {
@@ -221,21 +224,21 @@ static FFatResult f_dir(FFat32* f)
     }
     
     // feed F_NXT registers
-    if (next_cluster == 0x0ffffff8 || next_cluster == 0x0fffffff) {
-        f->reg.F_NXTC = f->reg.F_NXTS = 0;
+    if (next_cluster == FAT_EOC || next_cluster == FAT_EOF) {
+        f->reg.state_next_cluster = f->reg.state_next_sector = 0;
         result = F_OK;
     } else {
-        f->reg.F_NXTC = next_cluster;
-        f->reg.F_NXTS = next_sector;
+        f->reg.state_next_cluster = next_cluster;
+        f->reg.state_next_sector = next_sector;
         result = F_MORE_DATA;
     }
     
     // load directory data form sector into buffer
-    load_cluster(f, cluster + var.data_start_cluster - 2, sector);
+    load_cluster(f, cluster + f->reg.data_start_cluster - 2, sector);
     
     // check if we really have more data to read (the last dir in array is not null)
-    if (result == F_MORE_DATA && f->buffer[512 - 32] == '\0') {
-        f->reg.F_NXTC = f->reg.F_NXTS = 0;
+    if (result == F_MORE_DATA && f->buffer[BYTES_PER_SECTOR - DIR_STRUCT_SZ] == '\0') {
+        f->reg.state_next_cluster = f->reg.state_next_sector = 0;
         result = F_OK;
     }
     
@@ -248,29 +251,40 @@ static FFatResult f_dir(FFat32* f)
 
 static FFatResult f_cd(FFat32* f)
 {
-    char filename[12] = { 0 };
-    strncpy(filename, (const char *) f->buffer, 11);
+    char filename[FILENAME_SZ + 1] = { 0 };
+    strncpy(filename, (const char *) f->buffer, FILENAME_SZ);
     uint8_t file_len = strlen(filename);
     
     // load current directory
     FFatResult result;
     do {
+        // read directory
+        f->buffer[0] = F_START_OVER;
         result = f_dir(f);
         if (result != F_OK && result != F_MORE_DATA)
             return result;
         
-        for (uint16_t i = 0; i < (512 / 32); ++i) {
-            uint16_t addr = i * 32;
-            uint8_t attr = f->buffer[addr + 11];   // attribute should be 0x10
-            if ((attr & 0x10) && strncmp(filename, (const char *) &f->buffer[addr], file_len) == 0) {
+        // iterate through returned files
+        for (uint16_t i = 0; i < (BYTES_PER_SECTOR / DIR_STRUCT_SZ); ++i) {
+            uint16_t addr = i * DIR_STRUCT_SZ;
+            uint8_t attr = f->buffer[addr + DIR_ATTR];   // attribute should be 0x10
+            
+            // if directory is found
+            if ((attr & ATTR_DIR)
+            && strncmp(filename, (const char *) &f->buffer[addr + DIR_FILENAME], file_len) == 0) {
+                
+                // set directory cluster
                 uint32_t cluster =
-                    (*(uint16_t *)  // TODO ...
+                      *(uint16_t *) &f->buffer[addr + DIR_CLUSTER_LOW]
+                    | ((uint32_t) (*(uint16_t *) &f->buffer[addr + DIR_CLUSTER_HIGH]) << 8);
+                f->reg.current_dir_cluster = cluster;
+                return F_OK;
             }
         }
     } while (result == F_MORE_DATA);
     
-    // iterate through result
-    // if found, change current directory
+    // the directory was not found
+    return F_INEXISTENT_DIRECTORY;
 }
 
 // endregion
@@ -282,12 +296,12 @@ static FFatResult f_cd(FFat32* f)
 FFatResult f_fat32(FFat32* f, FFat32Op operation)
 {
     switch (operation) {
-        case F_INIT:   f->reg.F_RSLT = f_init(f);   break;
-        case F_FREE:   f->reg.F_RSLT = f_free(f);   break;
-        case F_FREE_R: f->reg.F_RSLT = f_free_r(f); break;
-        case F_LABEL:  f->reg.F_RSLT = f_label(f);  break;
-        case F_DIR:    f->reg.F_RSLT = f_dir(f);    break;
-        case F_CD:     f->reg.F_RSLT = f_cd(f);     break;
+        case F_INIT:   f->reg.last_operation_result = f_init(f);   break;
+        case F_FREE:   f->reg.last_operation_result = f_free(f);   break;
+        case F_FREE_R: f->reg.last_operation_result = f_free_r(f); break;
+        case F_LABEL:  f->reg.last_operation_result = f_label(f);  break;
+        case F_DIR:    f->reg.last_operation_result = f_dir(f);    break;
+        case F_CD:     f->reg.last_operation_result = f_cd(f);     break;
         case F_MKDIR: break;
         case F_RMDIR: break;
         case F_OPEN: break;
@@ -298,7 +312,7 @@ FFatResult f_fat32(FFat32* f, FFat32Op operation)
         case F_RM: break;
         case F_MV: break;
         // TODO - find file
-        default: f->reg.F_RSLT = F_INCORRECT_OPERATION;
+        default: f->reg.last_operation_result = F_INCORRECT_OPERATION;
     }
-    return f->reg.F_RSLT;
+    return f->reg.last_operation_result;
 }

@@ -46,9 +46,20 @@ typedef enum {
 } FContinuation;
 
 typedef struct {
-    FFatResult F_RSLT;    // result of the last operation
-    uint32_t   F_NXTC;    // keeps state for multi-call operations (such as F_DIR, F_READ, F_WRITE): next cluster
-    uint32_t   F_NXTS;    // keeps state for multi-call operations (such as F_DIR, F_READ, F_WRITE): next sector
+    FFatResult last_operation_result : 8;
+    uint8_t    sectors_per_cluster;
+    uint8_t    _unused1;  // TODO
+    uint8_t    _unused2;  // TODO
+    
+    uint32_t   partition_start;
+    uint32_t   fat_sector_start;
+    uint32_t   fat_size_sectors;
+    uint32_t   data_start_cluster;
+    uint32_t   root_dir_cluster;
+    uint32_t   current_dir_cluster;
+    
+    uint32_t   state_next_cluster;
+    uint32_t   state_next_sector;
 } FFatRegisters;
 
 typedef struct {

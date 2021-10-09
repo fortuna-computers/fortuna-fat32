@@ -3,7 +3,7 @@ A very small (&lt; 8 kB) and memory conscious (&lt; 40 bytes + a shared 512 byte
 
 ## Special registers
 
-* `F_RSLT`: result of the last operation
+* `last_operation_result`: result of the last operation
 
 ## Supported operations
 
