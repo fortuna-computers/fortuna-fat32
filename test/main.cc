@@ -96,7 +96,11 @@ int main(int argc, char* argv[])
             memcpy(buffer, &((char const*) data)[block * 512], 512);
             return true;
         },
-        .reg = { .last_operation_result = F_OK, .state_next_cluster = 0, .state_next_sector = 0 }
+        .reg = {
+                .last_operation_result = F_OK,
+                .state_next_cluster = 0,
+                .state_next_sector = 0,
+        }
     };
     
     std::vector<Test> tests = prepare_tests();
