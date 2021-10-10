@@ -257,9 +257,9 @@ static FFatResult f_cd(FFat32* f)
     
     // load current directory
     FFatResult result;
+    f->buffer[0] = F_START_OVER;
     do {
         // read directory
-        f->buffer[0] = F_START_OVER;
         result = f_dir(f);
         if (result != F_OK && result != F_MORE_DATA)
             return result;
@@ -281,6 +281,9 @@ static FFatResult f_cd(FFat32* f)
                 return F_OK;
             }
         }
+        
+        f->buffer[0] = F_CONTINUE;  // in next fetch, continue the previous one
+    
     } while (result == F_MORE_DATA);
     
     // the directory was not found
