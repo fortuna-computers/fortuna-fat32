@@ -88,6 +88,15 @@ static uint32_t find_next_cluster_on_fat(FFat32* f, uint32_t cluster)
 
 //endregion
 
+/***************/
+/*  FIND FILE  */
+/***************/
+
+static uint32_t find_file_cluster(FFat32* f, const char* file)
+{
+    return 0;
+}
+
 /********************/
 /*  INITIALIZATION  */
 /********************/

@@ -1,5 +1,5 @@
 FORTUNA_FAT32 = src/ffat32.o
-TEST_OBJ = test/main.o test/tests.o test/scenario.o test/diskio.o test/ff/ff.o \
+TEST_OBJ = test/main.o test/tests.o test/helper.o test/scenario.o test/diskio.o test/ff/ff.o \
 	test/0.o test/1.o test/2.o test/3.o test/4.o test/5.o test/6.o test/7.o
 CFLAGS = -std=c11
 CPPFLAGS = -Wall -Wextra
