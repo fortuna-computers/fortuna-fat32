@@ -9,6 +9,6 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v2
-      - run: sudo apt-get install avr-gcc
+      - run: sudo apt-get install gcc-avr
       - run: make size
       - run: make check-code-size
