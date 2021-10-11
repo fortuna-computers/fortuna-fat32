@@ -9,6 +9,6 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v2
-      - run: apt-get install libbrotli-dev
+      - run: sudo apt-get install libbrotli-dev
       - run: make ftest
       - run: ./ftest
