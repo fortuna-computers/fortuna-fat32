@@ -103,7 +103,7 @@ std::vector<Test> prepare_tests()
             }
     );
     
-                // endregion
+    // endregion
     
     //
     // DIRECTORY OPERATIONS
@@ -178,7 +178,7 @@ std::vector<Test> prepare_tests()
                         return true;
                         
                     } else {
-                        return result == F_INEXISTENT_DIRECTORY;
+                        return result == F_INEXISTENT_FILE_OR_DIR;
                     }
                 }
         );
@@ -210,13 +210,40 @@ std::vector<Test> prepare_tests()
                         return true;
                     
                     } else {
-                        return result == F_INEXISTENT_DIRECTORY;
+                        return result == F_INEXISTENT_FILE_OR_DIR;
                     }
                 }
         );
     }
     
     // endregion
+    
+    //
+    // FILE/DIRECTORY OPERATIONS
+    //
+    
+    tests.emplace_back(
+            "Test file stat (directory, relative)",
+
+            [&](FFat32* ffat, Scenario const&) {
+                strcpy(reinterpret_cast<char*>(ffat->buffer), "HELLO");
+                result = f_fat32(ffat, F_STAT);
+            },
+
+            [&](uint8_t const* buffer, Scenario const& scenario, FATFS*) {
+                if (scenario.disk_state != Scenario::DiskState::Complete && result == F_INEXISTENT_FILE_OR_DIR)
+                    return true;
+                
+                if (result == F_OK)
+                    return false;
+                
+                return (buffer[11] & 0x10) != 0;   // attr is directory
+            }
+    );
+    
+    // TODO - test: file, absolute
+    
+    // TODO - test root directory as well
     
     return tests;
 }

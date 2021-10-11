@@ -38,7 +38,7 @@ typedef enum {
     F_INCORRECT_OPERATION       = 0x2,
     F_NOT_FAT_32                = 0x3,
     F_BYTES_PER_SECTOR_NOT_512  = 0x4,
-    F_INEXISTENT_DIRECTORY      = 0x5,
+    F_INEXISTENT_FILE_OR_DIR      = 0x5,
 } FFatResult;
 
 typedef enum {

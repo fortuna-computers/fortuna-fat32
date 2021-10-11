@@ -142,7 +142,7 @@ static FDirResult dir(FFat32* f, uint32_t dir_cluster, FContinuation continuatio
     return result;
 }
 
-static uint32_t find_file_cluster_rel(FFat32* f, const char* filename, size_t filename_sz, uint32_t current_cluster)
+static uint32_t find_file_cluster_rel(FFat32* f, const char* filename, size_t filename_sz, uint32_t current_cluster, uint16_t* file_struct_ptr)
 {
     // load current directory
     FDirResult result = { F_OK, 0, 0 };
@@ -158,11 +158,13 @@ static uint32_t find_file_cluster_rel(FFat32* f, const char* filename, size_t fi
             uint16_t addr = i * DIR_STRUCT_SZ;
             uint8_t attr = f->buffer[addr + DIR_ATTR];   // attribute should be 0x10
             
-            // if directory is found
+            // if file/directory is found
             if ((attr & ATTR_DIR)
                 && strncmp(filename, (const char *) &f->buffer[addr + DIR_FILENAME], filename_sz) == 0) {
                 
                 // return file/directory cluster
+                if (file_struct_ptr)
+                    *file_struct_ptr = addr;
                 return *(uint16_t *) &f->buffer[addr + DIR_CLUSTER_LOW]
                         | ((uint32_t) (*(uint16_t *) &f->buffer[addr + DIR_CLUSTER_HIGH]) << 8);
             }
@@ -176,7 +178,7 @@ static uint32_t find_file_cluster_rel(FFat32* f, const char* filename, size_t fi
     return 0;
 }
 
-static uint32_t find_file_cluster(FFat32* f, const char* filename)
+static uint32_t find_file_cluster(FFat32* f, const char* filename, uint16_t* file_struct_ptr)
 {
     uint32_t current_cluster;
     if (filename[0] == '/') {   // absolute path
@@ -193,12 +195,12 @@ static uint32_t find_file_cluster(FFat32* f, const char* filename)
         
         char* end = strchr(filename, '/');
         if (end != NULL) {
-            current_cluster = find_file_cluster_rel(f, filename, end - filename, current_cluster);
+            current_cluster = find_file_cluster_rel(f, filename, end - filename, current_cluster, file_struct_ptr);
             if (current_cluster == 0)   // file not found
                 return 0;
             filename = end + 1;  // skip to next
         } else {
-            return find_file_cluster_rel(f, filename, len, current_cluster);
+            return find_file_cluster_rel(f, filename, len, current_cluster, file_struct_ptr);
         }
     }
 }
@@ -338,9 +340,9 @@ static FFatResult f_cd(FFat32* f)
     strncpy(filename, (const char *) f->buffer, len);
     filename[len] = '\0';
     
-    uint32_t cluster = find_file_cluster(f, filename);
+    uint32_t cluster = find_file_cluster(f, filename, NULL);
     if (cluster == 0) {
-        return F_INEXISTENT_DIRECTORY;
+        return F_INEXISTENT_FILE_OR_DIR;
     } else {
         f->reg.current_dir_cluster = cluster;
         return F_OK;
