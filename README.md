@@ -1,4 +1,7 @@
 # fortuna-fat32
+
+![Passing tests?](https://github.com/fortuna-computers/fortuna-fat32/actions/workflows/automated-tests.yml/badge.svg)
+
 A very small (&lt; 8 kB) and memory conscious (&lt; 40 bytes + a shared 512 byte buffer) C ANSI code for accessing FAT32 images. Compilable to both AVR and x64, for use in Fortuna computers and emulator.
 
 ### Special registers
