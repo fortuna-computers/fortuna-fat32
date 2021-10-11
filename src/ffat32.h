@@ -12,6 +12,7 @@ typedef enum {
     F_LABEL   = 0x10,
     F_FREE    = 0x11,
     F_FREE_R  = 0x12,
+    F_BOOT    = 0x13,
 
     // directory operations
     F_DIR     = 0x20,
