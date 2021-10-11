@@ -4,5 +4,6 @@ jobs:
   AutomatedTesting:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Hello world!"
+      - name: Check out repository code
+        uses: actions/checkout@v2
       - run: ls
