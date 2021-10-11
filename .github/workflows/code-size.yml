@@ -1,0 +1,14 @@
+name: AVR code size
+on:
+  push:
+    branches:
+      - master
+jobs:
+  AutomatedTesting:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v2
+      - run: sudo apt-get install avr-gcc
+      - run: make size
+      - run: make check-code-size
