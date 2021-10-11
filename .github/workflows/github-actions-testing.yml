@@ -1,10 +1,13 @@
 name: Automated testing
-on: [push]
+on:
+  push:
+    branches:
+      - master
 jobs:
   AutomatedTesting:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
         uses: actions/checkout@v2
-      - run: make test
+      - run: make ftest
       - run: ./ftest
