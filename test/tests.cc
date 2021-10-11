@@ -139,7 +139,7 @@ std::vector<Test> prepare_tests()
         );
         
         tests.emplace_back(
-                "cd to directory (relative path)",
+                "Cd to directory (relative path)",
 
                 [&](FFat32* ffat, Scenario const&) {
                     strcpy(reinterpret_cast<char*>(ffat->buffer), "HELLO");
@@ -152,6 +152,7 @@ std::vector<Test> prepare_tests()
                     if (scenario.disk_state == Scenario::DiskState::Complete) {
                         if (result != F_OK)
                             return false;
+                        
                         add_files_to_dir_structure(buffer, directory);  // read files in directory
                         if (std::find_if(directory.begin(), directory.end(),
                                          [](File const& file) { return file.name == "FORTUNA"; }) == directory.end())
@@ -162,6 +163,38 @@ std::vector<Test> prepare_tests()
                         
                         return true;
                         
+                    } else {
+                        return result == F_INEXISTENT_DIRECTORY;
+                    }
+                }
+        );
+    
+        tests.emplace_back(
+                "Cd to directory (absolute path)",
+            
+                [&](FFat32* ffat, Scenario const& scenario) {
+                    strcpy(reinterpret_cast<char*>(ffat->buffer), "HELLO");
+                    result = f_fat32(ffat, F_CD);
+                    if (scenario.disk_state == Scenario::DiskState::Complete && result != F_OK)
+                        throw std::runtime_error("Unexpected result.");
+                    strcpy(reinterpret_cast<char*>(ffat->buffer), "/HELLO/WORLD");
+                    result = f_fat32(ffat, F_CD);
+                    ffat->buffer[0] = F_START_OVER;
+                    f_fat32(ffat, F_DIR);
+                },
+            
+                [&](uint8_t const* buffer, Scenario const& scenario, FATFS*) {
+                    if (scenario.disk_state == Scenario::DiskState::Complete) {
+                        if (result != F_OK)
+                            return false;
+                    
+                        add_files_to_dir_structure(buffer, directory);  // read files in directory
+                        if (std::find_if(directory.begin(), directory.end(),
+                                         [](File const& file) { return file.name == "HELLO.TXT"; }) == directory.end())
+                            return false;
+                    
+                        return true;
+                    
                     } else {
                         return result == F_INEXISTENT_DIRECTORY;
                     }

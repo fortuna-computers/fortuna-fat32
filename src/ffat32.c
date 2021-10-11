@@ -93,18 +93,65 @@ static uint32_t find_next_cluster_on_fat(FFat32* f, uint32_t cluster)
 /*  FIND FILE  */
 /***************/
 
-static FFatResult f_dir(FFat32* f);
+// region ...
+
+typedef struct {
+    FFatResult result;
+    uint32_t   next_cluster;
+    uint16_t   next_sector;
+} FDirResult;
+
+static FDirResult dir(FFat32* f, uint32_t dir_cluster, FContinuation continuation, uint32_t continue_on_cluster, uint16_t continue_on_sector)
+{
+    FDirResult result;
+    uint32_t cluster;
+    uint16_t sector;
+    
+    // find current cluster and sector
+    if (continuation == F_START_OVER) {   // user has requested to start reading a new directory
+        cluster = dir_cluster;
+        sector = 0;
+    } else {   // user is continuing to read a directory that was started in a previous call
+        cluster = continue_on_cluster;
+        sector = continue_on_sector;
+    }
+    
+    // move to next cluster and/or sector
+    uint32_t next_cluster, next_sector;
+    if (sector >= (f->reg.sectors_per_cluster - 1U)) {
+        next_cluster = find_next_cluster_on_fat(f, cluster);
+        next_sector = 0;
+    } else {
+        next_cluster = cluster;
+        next_sector = sector + 1;
+    }
+    
+    // feed F_NXT registers
+    if (next_cluster == FAT_EOC || next_cluster == FAT_EOF)
+        result = (FDirResult) { F_OK, 0, 0 };
+    else
+        result = (FDirResult) { F_MORE_DATA, next_cluster, next_sector };
+    
+    // load directory data form sector into buffer
+    load_cluster(f, cluster + f->reg.data_start_cluster - 2, sector);
+    
+    // check if we really have more data to read (the last dir in array is not null)
+    if (result.result == F_MORE_DATA && f->buffer[BYTES_PER_SECTOR - DIR_STRUCT_SZ] == '\0')
+        result = (FDirResult) { F_OK, 0, 0 };
+    
+    return result;
+}
 
 static uint32_t find_file_cluster_rel(FFat32* f, const char* filename, size_t filename_sz, uint32_t current_cluster)
 {
     // load current directory
-    FFatResult result;
-    f->buffer[0] = F_START_OVER;
+    FDirResult result = { F_OK, 0, 0 };
+    FContinuation continuation = F_START_OVER;
     do {
         // read directory
-        result = f_dir(f);    // TODO - define cluster
-        if (result != F_OK && result != F_MORE_DATA)
-            return result;
+        result = dir(f, current_cluster, continuation, result.next_cluster, result.next_sector);
+        if (result.result != F_OK && result.result != F_MORE_DATA)
+            return result.result;
         
         // iterate through returned files
         for (uint16_t i = 0; i < (BYTES_PER_SECTOR / DIR_STRUCT_SZ); ++i) {
@@ -121,9 +168,9 @@ static uint32_t find_file_cluster_rel(FFat32* f, const char* filename, size_t fi
             }
         }
         
-        f->buffer[0] = F_CONTINUE;  // in next fetch, continue the previous one
+        continuation = F_CONTINUE;  // in next fetch, continue the previous one
         
-    } while (result == F_MORE_DATA);
+    } while (result.result == F_MORE_DATA);
     
     // the directory was not found
     return 0;
@@ -155,6 +202,8 @@ static uint32_t find_file_cluster(FFat32* f, const char* filename)
         }
     }
 }
+
+// endregion
 
 /********************/
 /*  INITIALIZATION  */
@@ -264,58 +313,16 @@ static FFatResult f_free(FFat32* f)
 /*  DIRECTORY OPERATIONS  */
 /**************************/
 
-// region `f_dir` ...
+// region ...
 
 static FFatResult f_dir(FFat32* f)
 {
-    FFatResult result;
-    uint32_t cluster;
-    uint16_t sector;
-    
-    // find current cluster and sector
-    if (f->buffer[0] == F_START_OVER) {   // user has requested to start reading a new directory
-        cluster = f->reg.current_dir_cluster;
-        sector = 0;
-    } else {   // user is continuing to read a directory that was started in a previous call
-        cluster = f->reg.state_next_cluster;
-        sector = f->reg.state_next_sector;
-    }
-    
-    // move to next cluster and/or sector
-    uint32_t next_cluster, next_sector;
-    if (sector >= (f->reg.sectors_per_cluster - 1U)) {
-        next_cluster = find_next_cluster_on_fat(f, cluster);
-        next_sector = 0;
-    } else {
-        next_cluster = cluster;
-        next_sector = sector + 1;
-    }
-    
-    // feed F_NXT registers
-    if (next_cluster == FAT_EOC || next_cluster == FAT_EOF) {
-        f->reg.state_next_cluster = f->reg.state_next_sector = 0;
-        result = F_OK;
-    } else {
-        f->reg.state_next_cluster = next_cluster;
-        f->reg.state_next_sector = next_sector;
-        result = F_MORE_DATA;
-    }
-    
-    // load directory data form sector into buffer
-    load_cluster(f, cluster + f->reg.data_start_cluster - 2, sector);
-    
-    // check if we really have more data to read (the last dir in array is not null)
-    if (result == F_MORE_DATA && f->buffer[BYTES_PER_SECTOR - DIR_STRUCT_SZ] == '\0') {
-        f->reg.state_next_cluster = f->reg.state_next_sector = 0;
-        result = F_OK;
-    }
-    
-    return result;
+    FDirResult result = dir(f, f->reg.current_dir_cluster, f->buffer[0],
+                            f->reg.state_next_cluster, f->reg.state_next_sector);
+    f->reg.state_next_cluster = result.next_cluster;
+    f->reg.state_next_sector = result.next_sector;
+    return result.result;
 }
-
-// endregion
-
-// region `f_cd` ...
 
 static FFatResult f_cd(FFat32* f)
 {
@@ -323,52 +330,15 @@ static FFatResult f_cd(FFat32* f)
     if (len > 255) len = 255;
     char filename[len+1];
     strncpy(filename, (const char *) f->buffer, len);
+    filename[len] = '\0';
     
     uint32_t cluster = find_file_cluster(f, filename);
-    if (cluster == 0)
+    if (cluster == 0) {
         return F_INEXISTENT_DIRECTORY;
-    else
-        return cluster;
-    
-    /*
-    char filename[FILENAME_SZ + 1] = { 0 };
-    strncpy(filename, (const char *) f->buffer, FILENAME_SZ);
-    uint8_t file_len = strlen(filename);
-    
-    // load current directory
-    FFatResult result;
-    f->buffer[0] = F_START_OVER;
-    do {
-        // read directory
-        result = f_dir(f);
-        if (result != F_OK && result != F_MORE_DATA)
-            return result;
-        
-        // iterate through returned files
-        for (uint16_t i = 0; i < (BYTES_PER_SECTOR / DIR_STRUCT_SZ); ++i) {
-            uint16_t addr = i * DIR_STRUCT_SZ;
-            uint8_t attr = f->buffer[addr + DIR_ATTR];   // attribute should be 0x10
-            
-            // if directory is found
-            if ((attr & ATTR_DIR)
-            && strncmp(filename, (const char *) &f->buffer[addr + DIR_FILENAME], file_len) == 0) {
-                
-                // set directory cluster
-                uint32_t cluster =
-                      *(uint16_t *) &f->buffer[addr + DIR_CLUSTER_LOW]
-                    | ((uint32_t) (*(uint16_t *) &f->buffer[addr + DIR_CLUSTER_HIGH]) << 8);
-                f->reg.current_dir_cluster = cluster;
-                return F_OK;
-            }
-        }
-        
-        f->buffer[0] = F_CONTINUE;  // in next fetch, continue the previous one
-    
-    } while (result == F_MORE_DATA);
-    
-    // the directory was not found
-    return F_INEXISTENT_DIRECTORY;
-    */
+    } else {
+        f->reg.current_dir_cluster = cluster;
+        return F_OK;
+    }
 }
 
 // endregion
