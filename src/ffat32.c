@@ -307,6 +307,12 @@ static FFatResult f_free(FFat32* f)
     return F_OK;
 }
 
+static FFatResult f_boot(FFat32* f)
+{
+    load_sector(f, BOOT_SECTOR);
+    return F_OK;
+}
+
 //endregion
 
 /**************************/
@@ -354,6 +360,7 @@ FFatResult f_fat32(FFat32* f, FFat32Op operation)
         case F_FREE:   f->reg.last_operation_result = f_free(f);   break;
         case F_FREE_R: f->reg.last_operation_result = f_free_r(f); break;
         case F_LABEL:  f->reg.last_operation_result = f_label(f);  break;
+        case F_BOOT:   f->reg.last_operation_result = f_boot(f);   break;
         case F_DIR:    f->reg.last_operation_result = f_dir(f);    break;
         case F_CD:     f->reg.last_operation_result = f_cd(f);     break;
         case F_MKDIR: break;

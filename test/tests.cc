@@ -89,7 +89,21 @@ std::vector<Test> prepare_tests()
         );
     }
     
-    // endregion
+    tests.emplace_back(
+            "Load boot sector",
+
+            [&](FFat32* ffat, Scenario const&) {
+                result = f_fat32(ffat, F_BOOT);
+            },
+
+            [&](uint8_t const* buffer, Scenario const&, FATFS*) {
+                return result == F_OK
+                    && buffer[0x0] == 0xeb
+                    && *(uint16_t *) &buffer[510] == 0xaa55;
+            }
+    );
+    
+                // endregion
     
     //
     // DIRECTORY OPERATIONS
