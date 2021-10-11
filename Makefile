@@ -5,6 +5,7 @@ CFLAGS = -std=c11
 CPPFLAGS = -Wall -Wextra
 CXXFLAGS = -std=c++17
 MCU = atmega16
+MAX_CODE_SIZE=8192
 
 all: ftest
 
@@ -22,6 +23,12 @@ size: ${FORTUNA_FAT32} size/size.o
 	avr-gcc -mmcu=${MCU} -o $@.elf $^ -Wl,--gc-sections
 	avr-size -C --mcu=${MCU} $@.elf
 
+check-code-size: size
+	if [ "`avr-size -B --mcu=atmega16 size.elf | tail -n1 | tr -s ' ' | cut -d ' ' -f 2`" -gt "${MAX_CODE_SIZE}" ]; then \
+		>&2 echo "Code is too big.";  \
+		false; \
+	fi
+
 gen-headers: ftest
 	./ftest -g > gen-headers.sh && \
 	chmod +x gen-headers.sh && \
@@ -34,7 +41,7 @@ clean-headers:
 .PHONY: clean-headers
 
 clean:
-	rm -f ${FORTUNA_FAT32} ${TEST_OBJ} ftest size.elf
+	rm -f ${FORTUNA_FAT32} ${TEST_OBJ} ftest size.elf size/size.o
 .PHONY: clean
 
 # vim: ts=8:sts=8:sw=8:noexpandtab
