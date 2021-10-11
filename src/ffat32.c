@@ -29,6 +29,7 @@
 #define BYTES_PER_SECTOR  512
 #define DIR_STRUCT_SZ      32
 #define FILENAME_SZ        11
+#define MAX_FILENAME_SZ   128U
 
 #define FAT_EOF    0x0fffffff
 #define FAT_EOC    0x0ffffff8
@@ -39,6 +40,16 @@
 #define DIR_CLUSTER_LOW  0x1a
 
 #define ATTR_DIR     0x10
+#define ATTR_ARCHIVE 0x20
+
+#define min(a,b) \
+    ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
+     _a < _b ? _a : _b; })
+#define max(a,b) \
+    ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
+     _a > _b ? _a : _b; })
 
 
 /**********************/
@@ -156,10 +167,13 @@ static uint32_t find_file_cluster_rel(FFat32* f, const char* filename, size_t fi
         // iterate through returned files
         for (uint16_t i = 0; i < (BYTES_PER_SECTOR / DIR_STRUCT_SZ); ++i) {
             uint16_t addr = i * DIR_STRUCT_SZ;
+            if (f->buffer[addr + DIR_FILENAME] == 0)  // no more files
+                break;
+            
             uint8_t attr = f->buffer[addr + DIR_ATTR];   // attribute should be 0x10
             
             // if file/directory is found
-            if ((attr & ATTR_DIR)
+            if (((attr & ATTR_DIR) || (attr & ATTR_ARCHIVE))
                 && strncmp(filename, (const char *) &f->buffer[addr + DIR_FILENAME], filename_sz) == 0) {
                 
                 // return file/directory cluster
@@ -351,6 +365,32 @@ static FFatResult f_cd(FFat32* f)
 
 // endregion
 
+/************************/
+/* FILE/DIR OPERATIONS  */
+/************************/
+
+static FFatResult f_stat(FFat32* f)
+{
+    size_t len = strlen((const char *) f->buffer);
+    char filename[min(len, MAX_FILENAME_SZ)];
+    strncpy(filename, (const char *) f->buffer, len);
+    filename[len] = '\0';
+    
+    uint16_t addr;
+    uint32_t cluster = find_file_cluster(f, filename, &addr);
+    if (cluster == 0)
+        return F_INEXISTENT_FILE_OR_DIR;
+    
+    // set first 32 bits to file stat
+    if (addr != 0)
+        memcpy(f->buffer, &f->buffer[addr], DIR_STRUCT_SZ);
+    
+    // the rest of the bits are zeroed
+    memset(&f->buffer[DIR_STRUCT_SZ], 0, BYTES_PER_SECTOR - DIR_STRUCT_SZ);
+    
+    return F_OK;
+}
+
 /*****************/
 /*  MAIN METHOD  */
 /*****************/
@@ -365,15 +405,15 @@ FFatResult f_fat32(FFat32* f, FFat32Op operation)
         case F_BOOT:   f->reg.last_operation_result = f_boot(f);   break;
         case F_DIR:    f->reg.last_operation_result = f_dir(f);    break;
         case F_CD:     f->reg.last_operation_result = f_cd(f);     break;
-        case F_MKDIR: break;
-        case F_RMDIR: break;
-        case F_OPEN: break;
-        case F_CLOSE: break;
-        case F_READ: break;
-        case F_WRITE: break;
-        case F_STAT: break;
-        case F_RM: break;
-        case F_MV: break;
+        case F_MKDIR:  break;
+        case F_RMDIR:  break;
+        case F_OPEN:   break;
+        case F_CLOSE:  break;
+        case F_READ:   break;
+        case F_WRITE:  break;
+        case F_STAT:   f->reg.last_operation_result = f_stat(f);   break;
+        case F_RM:     break;
+        case F_MV:     break;
         // TODO - find file
         default: f->reg.last_operation_result = F_INCORRECT_OPERATION;
     }

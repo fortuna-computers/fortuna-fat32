@@ -234,14 +234,36 @@ std::vector<Test> prepare_tests()
                 if (scenario.disk_state != Scenario::DiskState::Complete && result == F_INEXISTENT_FILE_OR_DIR)
                     return true;
                 
-                if (result == F_OK)
+                if (result != F_OK)
                     return false;
                 
                 return (buffer[11] & 0x10) != 0;   // attr is directory
             }
     );
     
-    // TODO - test: file, absolute
+    tests.emplace_back(
+            "Test file stat (file, absolute)",
+            
+            [&](FFat32* ffat, Scenario const&) {
+                strcpy(reinterpret_cast<char*>(ffat->buffer), "/HELLO/WORLD/HELLO.TXT");
+                result = f_fat32(ffat, F_STAT);
+            },
+            
+            [&](uint8_t const* buffer, Scenario const& scenario, FATFS*) {
+                if (scenario.disk_state != Scenario::DiskState::Complete && result == F_INEXISTENT_FILE_OR_DIR)
+                    return true;
+                
+                if (result != F_OK)
+                    return false;
+                
+                FILINFO filinfo;
+                if (f_stat("/HELLO/WORLD/HELLO.TXT", &filinfo) != FR_OK)
+                    throw std::runtime_error("`f_stat` reported error");
+    
+                uint32_t reported_size = *(uint32_t *) &buffer[28];
+                return reported_size == filinfo.fsize;
+            }
+    );
     
     // TODO - test root directory as well
     
