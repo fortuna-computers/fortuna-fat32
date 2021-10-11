@@ -1,9 +1,13 @@
 # fortuna-fat32
 A very small (&lt; 8 kB) and memory conscious (&lt; 40 bytes + a shared 512 byte buffer) C ANSI code for accessing FAT32 images. Compilable to both AVR and x64, for use in Fortuna computers and emulator.
 
-## Special registers
+### Special registers
 
-* `last_operation_result`: result of the last operation
+* `F_RSLT`: result of the last operation
+
+### Current limitations
+
+* Will only work in the first partition of a single disk.
 
 ## Supported operations
 
@@ -21,7 +25,7 @@ Directory operations (all operations are relative to the current directory):
 
 | Operation | Description | Input | Output |
 |-----------|-------------|-------|--------|
-| `F_DIR`   | List contents of current directory | `0`: start over; `1`: continue | Directory listing (see below)
+| `F_DIR`   | List contents of current directory | `0`: start over; `1`: continue | Directory listing ([same structure as FAT32](https://en.wikipedia.org/wiki/Design_of_the_FAT_file_system#Directory_entry))
 | `F_CD`    | Change directory | Directory name | - |
 | `F_MKDIR` | Create a directory | Directory name | - |
 | `F_RMDIR` | Remove a directory | Directory name | - |
@@ -34,28 +38,24 @@ File operations:
 | `F_CLOSE` | Close file | - | File number |
 | `F_READ` | Read block | File number, block number | Number of bytes left |
 | `F_WRITE` | Write block | File number, block number | Number of bytes to write |
+| `F_BOOT` | Load boot sector | - | - |
 
 Operations that work both in files and directories:
 
 | Operation | Description | Input | Output |
 |-----------|-------------|-------|--------|
-| `F_STAT` | Read file/dir information | File/dir name | Stat structure |
+| `F_STAT` | Read file/dir information | File/dir name | File in directory listing ([same structure as FAT32](https://en.wikipedia.org/wiki/Design_of_the_FAT_file_system#Directory_entry) |
 | `F_RM` | Remove file/directory | File/Directory name | - |
 | `F_MV` | Rename/move directory | Old file/directory name, new file/directory name | - |
 
 ## Structures
 
-`F_DIR` result structure:
-
-* same structure as directory entry in FAT32
-
 `F_OPEN` request values (TODO)
 
-Stat structure (TODO)
-
-Return values
+Return values:
 
 | Value | Meaning |
+|-------|---------|
 | `0`   | Success - end of operation |
 | `1`   | Success - more data available |
 | `>1`  | Failure |

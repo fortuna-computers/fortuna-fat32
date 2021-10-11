@@ -1,0 +1,8 @@
+name: Automated testing
+on: [push]
+jobs:
+  AutomatedTesting:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Hello world!"
+      - run: ls
