@@ -153,8 +153,25 @@ static FDirResult dir(FFat32* f, uint32_t dir_cluster, FContinuation continuatio
     return result;
 }
 
+static void parse_filename(char result[11], char const* filename, size_t filename_sz)
+{
+    memset(result, ' ', FILENAME_SZ);
+    uint8_t pos = 0, i = 0;
+    while (pos < FILENAME_SZ) {
+        if (filename[i] == 0 || i == filename_sz)
+            return;
+        else if (filename[i] == '.')
+            pos = FILENAME_SZ - 3;
+        else
+            result[pos++] = filename[i++];
+    }
+}
+
 static uint32_t find_file_cluster_rel(FFat32* f, const char* filename, size_t filename_sz, uint32_t current_cluster, uint16_t* file_struct_ptr)
 {
+    char parsed_filename[FILENAME_SZ];
+    parse_filename(parsed_filename, filename, filename_sz);
+    
     // load current directory
     FDirResult result = { F_OK, 0, 0 };
     FContinuation continuation = F_START_OVER;
@@ -174,7 +191,7 @@ static uint32_t find_file_cluster_rel(FFat32* f, const char* filename, size_t fi
             
             // if file/directory is found
             if (((attr & ATTR_DIR) || (attr & ATTR_ARCHIVE))
-                && strncmp(filename, (const char *) &f->buffer[addr + DIR_FILENAME], filename_sz) == 0) {
+                && strncmp(parsed_filename, (const char *) &f->buffer[addr + DIR_FILENAME], FILENAME_SZ) == 0) {
                 
                 // return file/directory cluster
                 if (file_struct_ptr)
