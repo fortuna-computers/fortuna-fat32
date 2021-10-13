@@ -241,7 +241,6 @@ std::vector<Test> prepare_tests()
             }
     );
     
-    /*
     tests.emplace_back(
             "Test file stat (file, absolute)",
             
@@ -265,7 +264,6 @@ std::vector<Test> prepare_tests()
                 return reported_size == filinfo.fsize;
             }
     );
-     */
     
     // TODO - test root directory as well
     

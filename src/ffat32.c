@@ -165,12 +165,14 @@ static void parse_filename(char result[11], char const* filename, size_t filenam
     memset(result, ' ', FILENAME_SZ);
     uint8_t pos = 0, i = 0;
     while (pos < FILENAME_SZ) {
-        if (filename[i] == 0 || i == filename_sz)
+        if (filename[i] == 0 || i == filename_sz) {
             return;
-        else if (filename[i] == '.')
+        } else if (filename[i] == '.') {
             pos = FILENAME_SZ - 3;
-        else
+            ++i;
+        } else {
             result[pos++] = filename[i++];
+        }
     }
 }
 
@@ -396,13 +398,8 @@ static FFatResult f_cd(FFat32* f)
 
 static FFatResult f_stat(FFat32* f)
 {
-    size_t len = strlen((const char *) f->buffer);
-    char filename[min(len, MAX_FILENAME_SZ)];
-    strncpy(filename, (const char *) f->buffer, len);
-    filename[len] = '\0';
-    
     uint16_t addr;
-    int64_t cluster = find_file_cluster(f, filename, &addr);
+    int64_t cluster = find_file_cluster(f, (const char *) f->buffer, &addr);
     if (cluster < 0)
         return -cluster;
     
