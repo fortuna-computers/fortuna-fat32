@@ -163,12 +163,7 @@ std::vector<Test> prepare_tests()
                         if (result != F_OK)
                             return false;
                         
-                        add_files_to_dir_structure(buffer, directory);  // read files in directory
-                        if (std::find_if(directory.begin(), directory.end(),
-                                         [](File const& file) { return file.name == "FORTUNA"; }) == directory.end())
-                            return false;
-                        if (std::find_if(directory.begin(), directory.end(),
-                                         [](File const& file) { return file.name == "WORLD"; }) == directory.end())
+                        if (!check_for_files_in_directory(buffer, directory, { "FORTUNA", "WORLD" }))
                             return false;
                         
                         return true;
@@ -197,10 +192,8 @@ std::vector<Test> prepare_tests()
                     if (scenario.disk_state == Scenario::DiskState::Complete) {
                         if (result != F_OK)
                             return false;
-                    
-                        add_files_to_dir_structure(buffer, directory);  // read files in directory
-                        if (std::find_if(directory.begin(), directory.end(),
-                                         [](File const& file) { return file.name == "HELLO.TXT"; }) == directory.end())
+    
+                        if (!check_for_files_in_directory(buffer, directory, { "HELLO.TXT" }))
                             return false;
                     
                         return true;
@@ -208,6 +201,36 @@ std::vector<Test> prepare_tests()
                     } else {
                         return result == F_INEXISTENT_FILE_OR_DIR;
                     }
+                }
+        );
+    
+        tests.emplace_back(
+                "Cd to root ('/') and dir",
+            
+                [&](FFat32* ffat, Scenario const& scenario) {
+                    strcpy(reinterpret_cast<char*>(ffat->buffer), "HELLO");
+                    result = f_fat32(ffat, F_CD);
+                    ffat->buffer[0] = F_START_OVER;
+                    f_fat32(ffat, F_DIR);
+                },
+            
+                [&](uint8_t const* buffer, Scenario const& scenario, FATFS*) {
+                    if (result != F_OK)
+                        return false;
+    
+                    switch (scenario.disk_state) {
+    
+                        case Scenario::DiskState::Empty:
+                            return true;
+                        case Scenario::DiskState::FilesInRoot:
+                            break;
+                        case Scenario::DiskState::Complete:
+                            break;
+                        case Scenario::DiskState::ManyFiles:
+                            break;
+                    }
+                    
+                    return false;
                 }
         );
     }
