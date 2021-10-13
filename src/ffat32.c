@@ -3,6 +3,13 @@
 #include <stdint.h>
 #include <string.h>
 
+/*************/
+/*  GLOBALS  */
+/*************/
+
+#define MAX_FILE_PATH 256
+static char file_path[MAX_FILE_PATH];
+
 /***********************/
 /*  LOCATIONS ON DISK  */
 /***********************/
@@ -167,7 +174,7 @@ static void parse_filename(char result[11], char const* filename, size_t filenam
     }
 }
 
-static uint32_t find_file_cluster_rel(FFat32* f, const char* filename, size_t filename_sz, uint32_t current_cluster, uint16_t* file_struct_ptr)
+static int64_t find_file_cluster_rel(FFat32* f, const char* filename, size_t filename_sz, uint32_t current_cluster, uint16_t* file_struct_ptr)
 {
     char parsed_filename[FILENAME_SZ];
     parse_filename(parsed_filename, filename, filename_sz);
@@ -179,7 +186,7 @@ static uint32_t find_file_cluster_rel(FFat32* f, const char* filename, size_t fi
         // read directory
         result = dir(f, current_cluster, continuation, result.next_cluster, result.next_sector);
         if (result.result != F_OK && result.result != F_MORE_DATA)
-            return result.result;
+            return -result.result;
         
         // iterate through returned files
         for (uint16_t i = 0; i < (BYTES_PER_SECTOR / DIR_STRUCT_SZ); ++i) {
@@ -206,32 +213,39 @@ static uint32_t find_file_cluster_rel(FFat32* f, const char* filename, size_t fi
     } while (result.result == F_MORE_DATA);
     
     // the directory was not found
-    return 0;
+    return -F_INEXISTENT_FILE_OR_DIR;
 }
 
-static uint32_t find_file_cluster(FFat32* f, const char* filename, uint16_t* file_struct_ptr)
+static int64_t find_file_cluster(FFat32* f, const char* filename, uint16_t* file_struct_ptr)
 {
+    // store file path for later
+    size_t len = strlen(filename);
+    if (len >= MAX_FILE_PATH)
+        return -F_FILE_PATH_TOO_LONG;
+    strcpy(file_path, filename);
+    char* file = file_path;
+    
     uint32_t current_cluster;
-    if (filename[0] == '/') {   // absolute path
+    if (file[0] == '/') {   // absolute path
         current_cluster = f->reg.root_dir_cluster;
-        ++filename;  // skip intitial '/'
+        ++file;  // skip intitial '/'
     } else {
         current_cluster = f->reg.current_dir_cluster;
     }
     
     while (1) {   // iterate directory by directory
-        size_t len = strlen(filename);
+        len = strlen(file);
         if (len == 0)
             return current_cluster;
         
-        char* end = strchr(filename, '/');
+        char* end = strchr(file, '/');
         if (end != NULL) {
-            current_cluster = find_file_cluster_rel(f, filename, end - filename, current_cluster, file_struct_ptr);
+            current_cluster = find_file_cluster_rel(f, file, end - file, current_cluster, file_struct_ptr);
             if (current_cluster == 0)   // file not found
-                return 0;
-            filename = end + 1;  // skip to next
+                return -F_INEXISTENT_FILE_OR_DIR;
+            file = end + 1;  // skip to next
         } else {
-            return find_file_cluster_rel(f, filename, len, current_cluster, file_struct_ptr);
+            return find_file_cluster_rel(f, file, len, current_cluster, file_struct_ptr);
         }
     }
 }
@@ -365,15 +379,9 @@ static FFatResult f_dir(FFat32* f)
 
 static FFatResult f_cd(FFat32* f)
 {
-    unsigned long len = strlen((const char *) f->buffer);
-    if (len > 255) len = 255;
-    char filename[len+1];
-    strncpy(filename, (const char *) f->buffer, len);
-    filename[len] = '\0';
-    
-    uint32_t cluster = find_file_cluster(f, filename, NULL);
-    if (cluster == 0) {
-        return F_INEXISTENT_FILE_OR_DIR;
+    int64_t cluster = find_file_cluster(f, (const char *) f->buffer, NULL);
+    if (cluster < 0) {
+        return cluster * (-1);
     } else {
         f->reg.current_dir_cluster = cluster;
         return F_OK;
@@ -394,9 +402,9 @@ static FFatResult f_stat(FFat32* f)
     filename[len] = '\0';
     
     uint16_t addr;
-    uint32_t cluster = find_file_cluster(f, filename, &addr);
-    if (cluster == 0)
-        return F_INEXISTENT_FILE_OR_DIR;
+    int64_t cluster = find_file_cluster(f, filename, &addr);
+    if (cluster < 0)
+        return -cluster;
     
     // set first 32 bits to file stat
     if (addr != 0)
