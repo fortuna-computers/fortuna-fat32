@@ -227,7 +227,7 @@ static int64_t find_file_cluster(FFat32* f, const char* filename, uint16_t* file
     strcpy(file_path, filename);
     char* file = file_path;
     
-    uint32_t current_cluster;
+    int64_t current_cluster;
     if (file[0] == '/') {   // absolute path
         current_cluster = f->reg.root_dir_cluster;
         ++file;  // skip intitial '/'
