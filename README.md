@@ -24,32 +24,34 @@ Disk operations:
 | `F_LABEL` | Get volume label | - | `000 - 010`: Volume label |
 | `F_FREE`  | Free disk space (from FSInfo) | - | `000 - 003`: Space, in bytes |
 | `F_FREE_R`  | Free disk space (recalculate from FAT) | - | `000 - 003`: Space, in bytes |
-| `F_BOOT` | Load boot sector | - | - |
+| `F_BOOT` | Load boot sector | - | The 512-byte boot sector |
 
-Directory operations (all operations are relative to the current directory):
+Directory operations:
+
+*(directory could be a path relative to current dir, or an absolute path starting with '/')*
 
 | Operation | Description | Input | Output |
 |-----------|-------------|-------|--------|
 | `F_DIR`   | List contents of current directory | `0`: start over; `1`: continue | Directory listing ([same structure as FAT32](https://en.wikipedia.org/wiki/Design_of_the_FAT_file_system#Directory_entry))
-| `F_CD`    | Change directory | Directory name | - |
-| `F_MKDIR` | Create a directory | Directory name | - |
-| `F_RMDIR` | Remove a directory | Directory name | - |
+| `F_CD`    | Change directory | Directory path | - |
+| `F_MKDIR` | Create a directory | Directory path | - |
+| `F_RMDIR` | Remove a directory | Directory path | - |
 
 File operations:
 
 | Operation | Description | Input | Output |
 |-----------|-------------|-------|--------|
 | `F_OPEN` | Open or create a file | File name + attributes (see below) | File number |
-| `F_CLOSE` | Close file | - | File number |
+| `F_CLOSE` | Close file | File number | - |
 | `F_READ` | Read block | File number, block number | Number of bytes left |
 | `F_WRITE` | Write block | File number, block number | Number of bytes to write |
+| `F_RM` | Remove file | File/Directory name | - |
 
 Operations that work both in files and directories:
 
 | Operation | Description | Input | Output |
 |-----------|-------------|-------|--------|
 | `F_STAT` | Read file/dir information | File/dir name | File in directory listing ([same structure as FAT32](https://en.wikipedia.org/wiki/Design_of_the_FAT_file_system#Directory_entry) |
-| `F_RM` | Remove file/directory | File/Directory name | - |
 | `F_MV` | Rename/move directory | Old file/directory name, new file/directory name | - |
 
 ## Structures

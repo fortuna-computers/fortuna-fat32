@@ -7,12 +7,8 @@
 
 #define BYTES_PER_SECTOR 512
 
-// region Utils
-
 static std::vector<File> directory;
 static FFatResult result;
-
-// endregion
 
 std::vector<Test> prepare_tests()
 {
@@ -218,18 +214,24 @@ std::vector<Test> prepare_tests()
     
     // endregion
     
+    // TODO - create dir
+    
+    // TODO - remove dir
+    
     //
-    // FILE/DIRECTORY OPERATIONS
+    // STAT
     //
+    
+    // region ...
     
     tests.emplace_back(
             "Test file stat (directory, relative)",
-
+            
             [&](FFat32* ffat, Scenario const&) {
                 strcpy(reinterpret_cast<char*>(ffat->buffer), "HELLO");
                 result = f_fat32(ffat, F_STAT);
             },
-
+            
             [&](uint8_t const* buffer, Scenario const& scenario, FATFS*) {
                 if (scenario.disk_state != Scenario::DiskState::Complete && result == F_INEXISTENT_FILE_OR_DIR)
                     return true;
@@ -259,7 +261,7 @@ std::vector<Test> prepare_tests()
                 FILINFO filinfo;
                 if (f_stat("/HELLO/WORLD/HELLO.TXT", &filinfo) != FR_OK)
                     throw std::runtime_error("`f_stat` reported error");
-    
+                
                 uint32_t reported_size = *(uint32_t *) &buffer[28];
                 return reported_size == filinfo.fsize;
             }
@@ -283,6 +285,24 @@ std::vector<Test> prepare_tests()
                 return (buffer[11] & 0x10) != 0;   // attr is directory
             }
     );
+    
+    // endregion
+    
+    //
+    // FILE OPERATIONS
+    //
+    
+    // TODO - open file, read file, close file
+    
+    // TODO - create file, write file, remove file
+    
+    //
+    // MOVE
+    //
+    
+    // TODO - move file
+    
+    // TODO - move directory
     
     return tests;
 }
