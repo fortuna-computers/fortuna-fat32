@@ -258,24 +258,45 @@ static int64_t find_file_cluster(FFat32* f, const char* filename, uint16_t* file
 /*  CREATE FILE  */
 /*****************/
 
-static int64_t resolve_path_for_creation(const char* file_path, char filename[FILENAME_SZ])
+static void split_path_and_filename(char* file_path, char filename[FILENAME_SZ])
 {
-    return F_OK;  // TODO
+    size_t len = strlen(file_path);
+    if (file_path[len - 1] == '/')   // remove trailing slash
+        file_path[len - 1] = '\0';
+    
+    char* slash = strrchr(file_path, '/');
+    if (slash == NULL) {  // no slash in filename
+        parse_filename(filename, file_path, len);
+        file_path[0] = '\0';
+    } else {
+        parse_filename(filename, slash + 1, slash + 1 - filename + len);
+        *slash = '\0';
+    }
 }
 
-static bool validate_filename(char filename[FILENAME_SZ])
+static bool validate_filename(const char filename[FILENAME_SZ])
 {
-    return true;  // TODO
+    static const char* invalid_chars = "\\/:*?\"<>|";
+    uint8_t len = strlen(invalid_chars);
+    
+    for (uint8_t i = 0; i < FILENAME_SZ; ++i) {
+        if (filename[i] <= 32)
+            return false;
+        for (uint8_t j = 0; j < len; ++j)
+            if (filename[i] == invalid_chars[j])
+                return false;
+    }
+    return true;
 }
 
-static int64_t reserve_next_free_cluster()
+static int64_t find_next_free_cluster()
 {
     return 0;  // TODO
 }
 
 static void set_cluster_as_eoc(uint32_t cluster)
 {
-    // TODO
+    // TODO - don't forget FAT copy
 }
 
 static uint16_t find_next_free_dir_entry_location(uint32_t* path_cluster)
@@ -294,10 +315,11 @@ static void update_fsinfo(uint32_t file_size_in_clusters)
     // TODO
 }
 
-static int64_t create_file_entry(const char* file_path, uint8_t attrib, uint32_t fat_datetime, uint32_t* parent_dir)
+static int64_t create_file_entry(FFat32* f, char* file_path, uint8_t attrib, uint32_t fat_datetime, uint32_t* parent_dir)
 {
     char filename[FILENAME_SZ];
-    int64_t path_cluster = resolve_path_for_creation(file_path, filename);
+    split_path_and_filename(file_path, filename);
+    int64_t path_cluster = find_file_cluster(f, file_path, NULL);
     if (path_cluster < 0)
         return path_cluster;
     *parent_dir = path_cluster;
@@ -305,7 +327,7 @@ static int64_t create_file_entry(const char* file_path, uint8_t attrib, uint32_t
     if (!validate_filename(filename))
         return -F_INVALID_FILENAME;
     
-    int64_t file_contents_cluster = reserve_next_free_cluster();
+    int64_t file_contents_cluster = find_next_free_cluster();
     if (file_contents_cluster < 0)
         return file_contents_cluster;
     set_cluster_as_eoc(file_contents_cluster);
@@ -492,7 +514,7 @@ static FFatResult f_mkdir(FFat32* f, uint32_t fat_datetime)
     
     // create file entry
     int64_t cluster;
-    if ((cluster = create_file_entry((const char *) f->buffer, DIR_ATTR, fat_datetime, &parent_dir_cluster)) < 0)
+    if ((cluster = create_file_entry(f, (char *) f->buffer, DIR_ATTR, fat_datetime, &parent_dir_cluster)) < 0)
         return -cluster;
     
     // create empty directory structure ('.' and '..')
