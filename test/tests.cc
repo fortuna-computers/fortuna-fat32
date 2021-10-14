@@ -175,6 +175,32 @@ std::vector<Test> prepare_tests()
         );
     
         tests.emplace_back(
+                "Cd to directory (relative path with slash at the end)",
+            
+                [&](FFat32* ffat, Scenario const&) {
+                    strcpy(reinterpret_cast<char*>(ffat->buffer), "HELLO/");
+                    result = f_fat32(ffat, F_CD);
+                    ffat->buffer[0] = F_START_OVER;
+                    f_fat32(ffat, F_DIR);
+                },
+            
+                [&](uint8_t const* buffer, Scenario const& scenario, FATFS*) {
+                    if (scenario.disk_state == Scenario::DiskState::Complete) {
+                        if (result != F_OK)
+                            return false;
+                    
+                        if (!check_for_files_in_directory(buffer, directory, { "FORTUNA", "WORLD" }))
+                            return false;
+                    
+                        return true;
+                    
+                    } else {
+                        return result == F_INEXISTENT_FILE_OR_DIR;
+                    }
+                }
+        );
+    
+        tests.emplace_back(
                 "Cd to directory (absolute path)",
             
                 [&](FFat32* ffat, Scenario const& scenario) {
@@ -208,7 +234,7 @@ std::vector<Test> prepare_tests()
                 "Cd to root ('/') and dir",
             
                 [&](FFat32* ffat, Scenario const& scenario) {
-                    strcpy(reinterpret_cast<char*>(ffat->buffer), "HELLO");
+                    strcpy(reinterpret_cast<char*>(ffat->buffer), "/");
                     result = f_fat32(ffat, F_CD);
                     ffat->buffer[0] = F_START_OVER;
                     f_fat32(ffat, F_DIR);
@@ -218,19 +244,29 @@ std::vector<Test> prepare_tests()
                     if (result != F_OK)
                         return false;
     
+                    std::vector<std::string> files;
                     switch (scenario.disk_state) {
-    
                         case Scenario::DiskState::Empty:
                             return true;
                         case Scenario::DiskState::FilesInRoot:
+                            files = { "HELLO.TXT", "TAGS.TXT" };
                             break;
                         case Scenario::DiskState::Complete:
+                            files = { "HELLO", "FORTUNA.DAT", "TAGS.TXT" };
                             break;
                         case Scenario::DiskState::ManyFiles:
+                            for (size_t i = 1; i < 10; ++i) {
+                                char buf[16];
+                                sprintf(buf, "FILE%03zu.BIN", i);
+                                files.emplace_back(buf);
+                            }
                             break;
                     }
-                    
-                    return false;
+    
+                    if (!check_for_files_in_directory(buffer, directory, files))
+                        return false;
+    
+                    return true;
                 }
         );
     }

@@ -32,7 +32,7 @@ static void print_headers(std::vector<Test> const& tests)
     char chr = 'A';
     std::cout << std::string(43, ' ');
     for ([[maybe_unused]] Test const& _: tests)
-        std::cout << chr++ << ' ';
+        std::cout << chr++;
     std::cout << "\n";
     std::cout << std::string(80, '-') << "\n";
 }
@@ -62,9 +62,9 @@ static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, 
         
         test.execute(ffat, scenario);
         if (test.verify(buffer, scenario, &fatfs)) {
-            std::cout << GRN "\u2713 " RST;
+            std::cout << GRN "\u2713" RST;
         } else {
-            std::cout << RED "X " RST;
+            std::cout << RED "X" RST;
             // exit(1);
         }
         std::cout.flush();
