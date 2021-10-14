@@ -8,7 +8,7 @@
 /*************/
 
 #define MAX_FILE_PATH 256
-static char file_path[MAX_FILE_PATH];
+static char global_file_path[MAX_FILE_PATH];
 
 /***********************/
 /*  LOCATIONS ON DISK  */
@@ -224,8 +224,8 @@ static int64_t find_file_cluster(FFat32* f, const char* filename, uint16_t* file
     size_t len = strlen(filename);
     if (len >= MAX_FILE_PATH)
         return -F_FILE_PATH_TOO_LONG;
-    strcpy(file_path, filename);
-    char* file = file_path;
+    strcpy(global_file_path, filename);
+    char* file = global_file_path;
     
     int64_t current_cluster;
     if (file[0] == '/') {   // absolute path
@@ -253,6 +253,71 @@ static int64_t find_file_cluster(FFat32* f, const char* filename, uint16_t* file
 }
 
 // endregion
+
+/*****************/
+/*  CREATE FILE  */
+/*****************/
+
+static int64_t resolve_path_for_creation(const char* file_path, char filename[FILENAME_SZ])
+{
+    return F_OK;  // TODO
+}
+
+static bool validate_filename(char filename[FILENAME_SZ])
+{
+    return true;  // TODO
+}
+
+static int64_t reserve_next_free_cluster()
+{
+    return 0;  // TODO
+}
+
+static void set_cluster_as_eoc(uint32_t cluster)
+{
+    // TODO
+}
+
+static uint16_t find_next_free_dir_entry_location(uint32_t* path_cluster)
+{
+    return 0;   // TODO
+}
+
+static void create_entry_in_directory(uint32_t path_cluster, uint16_t dir_entry_location, char filename[MAX_FILENAME_SZ],
+                                      uint8_t attrib, uint16_t fat_datetime, uint32_t cluster)
+{
+    // TODO
+}
+
+static void update_fsinfo(uint32_t file_size_in_clusters)
+{
+    // TODO
+}
+
+static int64_t create_file_entry(const char* file_path, uint8_t attrib, uint32_t fat_datetime, uint32_t* parent_dir)
+{
+    char filename[FILENAME_SZ];
+    int64_t path_cluster = resolve_path_for_creation(file_path, filename);
+    if (path_cluster < 0)
+        return path_cluster;
+    *parent_dir = path_cluster;
+    
+    if (!validate_filename(filename))
+        return -F_INVALID_FILENAME;
+    
+    int64_t file_contents_cluster = reserve_next_free_cluster();
+    if (file_contents_cluster < 0)
+        return file_contents_cluster;
+    set_cluster_as_eoc(file_contents_cluster);
+    
+    uint32_t my_path_cluster = path_cluster;
+    uint16_t dir_entry_location = find_next_free_dir_entry_location(&my_path_cluster);
+    create_entry_in_directory(my_path_cluster, dir_entry_location, filename, attrib, fat_datetime, file_contents_cluster);
+    
+    update_fsinfo(1);
+    
+    return F_OK;
+}
 
 /********************/
 /*  INITIALIZATION  */
@@ -396,6 +461,8 @@ static FFatResult f_cd(FFat32* f)
 /* FILE/DIR OPERATIONS  */
 /************************/
 
+// region ...
+
 static FFatResult f_stat(FFat32* f)
 {
     uint16_t addr;
@@ -413,11 +480,35 @@ static FFatResult f_stat(FFat32* f)
     return F_OK;
 }
 
+// endregion
+
+/*************************/
+/* DIRECTORY OPERATIONS  */
+/*************************/
+
+static FFatResult f_mkdir(FFat32* f, uint32_t fat_datetime)
+{
+    uint32_t parent_dir_cluster;
+    
+    // create file entry
+    int64_t cluster;
+    if ((cluster = create_file_entry((const char *) f->buffer, DIR_ATTR, fat_datetime, &parent_dir_cluster)) < 0)
+        return -cluster;
+    
+    // create empty directory structure ('.' and '..')
+    uint16_t entry = find_next_free_dir_entry_location(&parent_dir_cluster);
+    create_entry_in_directory(parent_dir_cluster, entry, ".", DIR_ATTR, fat_datetime, cluster);
+    entry = find_next_free_dir_entry_location(&parent_dir_cluster);
+    create_entry_in_directory(parent_dir_cluster, entry, "..", DIR_ATTR, fat_datetime, parent_dir_cluster);
+    
+    return F_OK;
+}
+
 /*****************/
 /*  MAIN METHOD  */
 /*****************/
 
-FFatResult f_fat32(FFat32* f, FFat32Op operation)
+FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime)
 {
     switch (operation) {
         case F_INIT:   f->reg.last_operation_result = f_init(f);   break;
@@ -427,7 +518,7 @@ FFatResult f_fat32(FFat32* f, FFat32Op operation)
         case F_BOOT:   f->reg.last_operation_result = f_boot(f);   break;
         case F_DIR:    f->reg.last_operation_result = f_dir(f);    break;
         case F_CD:     f->reg.last_operation_result = f_cd(f);     break;
-        case F_MKDIR:  break;
+        case F_MKDIR:  f->reg.last_operation_result = f_mkdir(f, fat_datetime); break;
         case F_RMDIR:  break;
         case F_OPEN:   break;
         case F_CLOSE:  break;

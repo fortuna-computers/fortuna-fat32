@@ -40,6 +40,7 @@ typedef enum {
     F_BYTES_PER_SECTOR_NOT_512  = 0x4,
     F_INEXISTENT_FILE_OR_DIR    = 0x5,
     F_FILE_PATH_TOO_LONG        = 0x6,
+    F_INVALID_FILENAME          = 0x7,
 } FFatResult;
 
 typedef enum {
@@ -76,7 +77,7 @@ typedef struct {
 extern "C" {
 #endif
 
-FFatResult f_fat32(FFat32* f, FFat32Op operation);
+FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime);
 
 #ifdef __cplusplus
 }
