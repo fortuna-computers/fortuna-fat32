@@ -7,12 +7,8 @@
 
 #define BYTES_PER_SECTOR 512
 
-// region Utils
-
 static std::vector<File> directory;
 static FFatResult result;
-
-// endregion
 
 std::vector<Test> prepare_tests()
 {
@@ -167,16 +163,37 @@ std::vector<Test> prepare_tests()
                         if (result != F_OK)
                             return false;
                         
-                        add_files_to_dir_structure(buffer, directory);  // read files in directory
-                        if (std::find_if(directory.begin(), directory.end(),
-                                         [](File const& file) { return file.name == "FORTUNA"; }) == directory.end())
-                            return false;
-                        if (std::find_if(directory.begin(), directory.end(),
-                                         [](File const& file) { return file.name == "WORLD"; }) == directory.end())
+                        if (!check_for_files_in_directory(buffer, directory, { "FORTUNA", "WORLD" }))
                             return false;
                         
                         return true;
                         
+                    } else {
+                        return result == F_INEXISTENT_FILE_OR_DIR;
+                    }
+                }
+        );
+    
+        tests.emplace_back(
+                "Cd to directory (relative path with slash at the end)",
+            
+                [&](FFat32* ffat, Scenario const&) {
+                    strcpy(reinterpret_cast<char*>(ffat->buffer), "HELLO/");
+                    result = f_fat32(ffat, F_CD);
+                    ffat->buffer[0] = F_START_OVER;
+                    f_fat32(ffat, F_DIR);
+                },
+            
+                [&](uint8_t const* buffer, Scenario const& scenario, FATFS*) {
+                    if (scenario.disk_state == Scenario::DiskState::Complete) {
+                        if (result != F_OK)
+                            return false;
+                    
+                        if (!check_for_files_in_directory(buffer, directory, { "FORTUNA", "WORLD" }))
+                            return false;
+                    
+                        return true;
+                    
                     } else {
                         return result == F_INEXISTENT_FILE_OR_DIR;
                     }
@@ -201,10 +218,8 @@ std::vector<Test> prepare_tests()
                     if (scenario.disk_state == Scenario::DiskState::Complete) {
                         if (result != F_OK)
                             return false;
-                    
-                        add_files_to_dir_structure(buffer, directory);  // read files in directory
-                        if (std::find_if(directory.begin(), directory.end(),
-                                         [](File const& file) { return file.name == "HELLO.TXT"; }) == directory.end())
+    
+                        if (!check_for_files_in_directory(buffer, directory, { "HELLO.TXT" }))
                             return false;
                     
                         return true;
@@ -214,22 +229,68 @@ std::vector<Test> prepare_tests()
                     }
                 }
         );
+    
+        tests.emplace_back(
+                "Cd to root ('/') and dir",
+            
+                [&](FFat32* ffat, Scenario const& scenario) {
+                    strcpy(reinterpret_cast<char*>(ffat->buffer), "/");
+                    result = f_fat32(ffat, F_CD);
+                    ffat->buffer[0] = F_START_OVER;
+                    f_fat32(ffat, F_DIR);
+                },
+            
+                [&](uint8_t const* buffer, Scenario const& scenario, FATFS*) {
+                    if (result != F_OK)
+                        return false;
+    
+                    std::vector<std::string> files;
+                    switch (scenario.disk_state) {
+                        case Scenario::DiskState::Empty:
+                            return true;
+                        case Scenario::DiskState::FilesInRoot:
+                            files = { "HELLO.TXT", "TAGS.TXT" };
+                            break;
+                        case Scenario::DiskState::Complete:
+                            files = { "HELLO", "FORTUNA.DAT", "TAGS.TXT" };
+                            break;
+                        case Scenario::DiskState::ManyFiles:
+                            for (size_t i = 1; i < 10; ++i) {
+                                char buf[16];
+                                sprintf(buf, "FILE%03zu.BIN", i);
+                                files.emplace_back(buf);
+                            }
+                            break;
+                    }
+    
+                    if (!check_for_files_in_directory(buffer, directory, files))
+                        return false;
+    
+                    return true;
+                }
+        );
     }
     
     // endregion
     
+    // TODO - create dir
+    
+    // TODO - remove dir
+    
     //
-    // FILE/DIRECTORY OPERATIONS
+    // STAT
     //
+    
+    // region ...
     
     tests.emplace_back(
             "Test file stat (directory, relative)",
-
+            
             [&](FFat32* ffat, Scenario const&) {
                 strcpy(reinterpret_cast<char*>(ffat->buffer), "HELLO");
                 result = f_fat32(ffat, F_STAT);
             },
-
+            
             [&](uint8_t const* buffer, Scenario const& scenario, FATFS*) {
                 if (scenario.disk_state != Scenario::DiskState::Complete && result == F_INEXISTENT_FILE_OR_DIR)
                     return true;
@@ -259,7 +320,7 @@ std::vector<Test> prepare_tests()
                 FILINFO filinfo;
                 if (f_stat("/HELLO/WORLD/HELLO.TXT", &filinfo) != FR_OK)
                     throw std::runtime_error("`f_stat` reported error");
-    
+                
                 uint32_t reported_size = *(uint32_t *) &buffer[28];
                 return reported_size == filinfo.fsize;
             }
@@ -283,6 +344,24 @@ std::vector<Test> prepare_tests()
                 return (buffer[11] & 0x10) != 0;   // attr is directory
             }
     );
+    
+    // endregion
+    
+    //
+    // FILE OPERATIONS
+    //
+    
+    // TODO - open file, read file, close file
+    
+    // TODO - create file, write file, remove file
+    
+    //
+    // MOVE
+    //
+    
+    // TODO - move file
+    
+    // TODO - move directory
     
     return tests;
 }
