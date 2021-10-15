@@ -41,6 +41,7 @@ typedef enum {
     F_INEXISTENT_FILE_OR_DIR    = 0x5,
     F_FILE_PATH_TOO_LONG        = 0x6,
     F_INVALID_FILENAME          = 0x7,
+    F_DISK_FULL                 = 0x8,
 } FFatResult;
 
 typedef enum {
