@@ -261,7 +261,7 @@ static FDirResult dir(FFat32* f, uint32_t dir_cluster, FContinuation continuatio
         next_sector = sector + 1;
     }
     
-    // feed F_NXT registers
+    // check if more data is needed
     if (next_cluster == FAT_EOC || next_cluster == FAT_EOF)
         result = (FDirResult) { F_OK, 0, 0 };
     else
@@ -605,6 +605,25 @@ static FFatResult f_cd(FFat32* f)
     }
 }
 
+static FFatResult f_mkdir(FFat32* f, uint32_t fat_datetime)
+{
+    uint32_t parent_dir_cluster;
+    
+    // create file entry
+    int64_t cluster;
+    if ((cluster = create_file_entry(f, (char *) f->buffer, DIR_ATTR, fat_datetime, &parent_dir_cluster)) < 0)
+        return -cluster;
+    
+    // create empty directory structure ('.' and '..')
+    uint16_t entry = find_next_free_dir_entry_location(f, &parent_dir_cluster);
+    create_entry_in_directory(f, parent_dir_cluster, entry, ".", DIR_ATTR, fat_datetime, cluster);
+    entry = find_next_free_dir_entry_location(f, &parent_dir_cluster);
+    create_entry_in_directory(f, parent_dir_cluster, entry, "..", DIR_ATTR, fat_datetime, parent_dir_cluster);
+    
+    return F_OK;
+}
+
+
 // endregion
 
 /************************/
@@ -626,32 +645,6 @@ static FFatResult f_stat(FFat32* f)
     
     // the rest of the bits are zeroed
     memset(&f->buffer[DIR_STRUCT_SZ], 0, BYTES_PER_SECTOR - DIR_STRUCT_SZ);
-    
-    return F_OK;
-}
-
-// endregion
-
-/*************************/
-/* DIRECTORY OPERATIONS  */
-/*************************/
-
-// region ...
-
-static FFatResult f_mkdir(FFat32* f, uint32_t fat_datetime)
-{
-    uint32_t parent_dir_cluster;
-    
-    // create file entry
-    int64_t cluster;
-    if ((cluster = create_file_entry(f, (char *) f->buffer, DIR_ATTR, fat_datetime, &parent_dir_cluster)) < 0)
-        return -cluster;
-    
-    // create empty directory structure ('.' and '..')
-    uint16_t entry = find_next_free_dir_entry_location(f, &parent_dir_cluster);
-    create_entry_in_directory(f, parent_dir_cluster, entry, ".", DIR_ATTR, fat_datetime, cluster);
-    entry = find_next_free_dir_entry_location(f, &parent_dir_cluster);
-    create_entry_in_directory(f, parent_dir_cluster, entry, "..", DIR_ATTR, fat_datetime, parent_dir_cluster);
     
     return F_OK;
 }
