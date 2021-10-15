@@ -125,6 +125,23 @@ static uint32_t fat_cluster_ptr(FFat32* f, uint32_t cluster)
     return from_32(f->buffer, cluster_loc % BYTES_PER_SECTOR);
 }
 
+static void fat_set_cluster_ptr(FFat32* f, uint32_t cluster, uint32_t ptr)
+{
+    uint32_t cluster_loc = cluster * 4;
+    uint32_t sector_to_load = cluster_loc / BYTES_PER_SECTOR;
+    
+    // read FAT and replace cluster
+    load_sector(f, f->reg.fat_sector_start + sector_to_load);
+    to_32(f->buffer, cluster_loc % BYTES_PER_SECTOR, ptr);
+    
+    // write FAT and FAT copies
+    uint32_t fat_sector = f->reg.fat_sector_start + sector_to_load;
+    for (uint8_t i = 0; i < f->reg.number_of_fats; ++i) {
+        write_sector(f, fat_sector);
+        fat_sector += f->reg.fat_size_sectors;
+    }
+}
+
 static uint32_t fat_find_first_free_cluster(FFat32* f, uint32_t start_at)
 {
     uint32_t starting_sector = start_at / 128;
@@ -151,6 +168,8 @@ static uint32_t fat_find_first_free_cluster(FFat32* f, uint32_t start_at)
 /***********************/
 /*  FSINFO MANAGEMENT  */
 /***********************/
+
+// region ...
 
 typedef struct {
     uint32_t next_free_cluster;
@@ -203,6 +222,7 @@ static FSInfo fsinfo_recalculate_values(FFat32* f)
     };
 }
 
+// endregion
 
 /***************/
 /*  FIND FILE  */
@@ -414,11 +434,6 @@ static int64_t find_next_free_cluster(FFat32* f)
     return cluster_ptr;
 }
 
-static void set_cluster_as_eoc(FFat32* f, uint32_t cluster)
-{
-    // TODO - don't forget FAT copy
-}
-
 static uint16_t find_next_free_dir_entry_location(FFat32* f, uint32_t* path_cluster)
 {
     return 0;   // TODO
@@ -453,7 +468,7 @@ static int64_t create_file_entry(FFat32* f, char* file_path, uint8_t attrib, uin
     int64_t file_contents_cluster = find_next_free_cluster(f);
     if (file_contents_cluster < 0)
         return file_contents_cluster;
-    set_cluster_as_eoc(f, file_contents_cluster);
+    fat_set_cluster_ptr(f, file_contents_cluster, FAT_EOC);
     
     // create directory entry in parent directory
     uint32_t my_path_cluster = path_cluster;
@@ -490,8 +505,8 @@ static FFatResult f_init(FFat32* f)
     f->reg.fat_sector_start = from_16(f->buffer, BPB_RESERVED_SECTORS);
     f->reg.fat_size_sectors = from_32(f->buffer, BPB_FAT_SIZE_SECTORS);
     
-    uint8_t number_of_fats = f->buffer[BPB_NUMBER_OF_FATS];
-    f->reg.data_start_cluster = (f->reg.fat_sector_start + (number_of_fats * f->reg.fat_size_sectors)) / f->reg.sectors_per_cluster;
+    f->reg.number_of_fats = f->buffer[BPB_NUMBER_OF_FATS];
+    f->reg.data_start_cluster = (f->reg.fat_sector_start + (f->reg.number_of_fats * f->reg.fat_size_sectors)) / f->reg.sectors_per_cluster;
     
     // check if bytes per sector is correct
    uint16_t bytes_per_sector = from_16(f->buffer, BPB_BYTES_PER_SECTOR);

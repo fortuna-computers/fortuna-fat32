@@ -52,8 +52,8 @@ typedef enum {
 typedef struct {
     FFatResult last_operation_result : 8;
     uint8_t    sectors_per_cluster;
-    uint8_t    _unused1;  // TODO
-    uint8_t    _unused2;  // TODO
+    uint8_t    number_of_fats;
+    uint8_t    _unused;    // TODO
     
     uint32_t   partition_start;
     uint32_t   fat_sector_start;
