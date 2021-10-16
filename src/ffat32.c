@@ -528,9 +528,13 @@ static void create_entry_in_directory(FFat32* f, uint32_t path_cluster, char fil
     write_cluster(f, dir_entry_ptr.cluster + f->reg.data_start_cluster, dir_entry_ptr.sector);
 }
 
-static void update_fsinfo(uint32_t last_cluster, int64_t change_in_size)
+static void update_fsinfo(FFat32* f, uint32_t last_cluster, int64_t change_in_size)
 {
-    // TODO
+    load_sector(f, FSINFO_SECTOR);
+    to_32(f->buffer, FSI_NEXT_FREE, last_cluster);
+    uint32_t current_count = from_32(f->buffer, FSI_FREE_COUNT);
+    to_32(f->buffer, FSI_FREE_COUNT, (int64_t) current_count + change_in_size);
+    write_sector(f, FSINFO_SECTOR);
 }
 
 static int64_t create_file_entry(FFat32* f, char* file_path, uint8_t attrib, uint32_t fat_datetime, uint32_t* parent_dir)
@@ -556,7 +560,7 @@ static int64_t create_file_entry(FFat32* f, char* file_path, uint8_t attrib, uin
     create_entry_in_directory(f, path_cluster, filename, attrib, fat_datetime, file_contents_cluster);
     
     // update FSINFO
-    update_fsinfo(file_contents_cluster, +1);
+    update_fsinfo(f, file_contents_cluster, +1);
     
     return F_OK;
 }
