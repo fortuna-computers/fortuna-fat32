@@ -13,10 +13,6 @@
 #define RED "\e[0;31m"
 #define RST "\e[0m"
 
-extern "C" {
-    extern uint8_t* diskio_image;
-}
-
 extern std::vector<Test> prepare_tests();
 
 static void print_test_descriptions(std::vector<Test> const& tests)
@@ -42,14 +38,9 @@ static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, 
 {
     std::cout << std::left << std::setw(43) << scenario.name;
     
-    scenario.decompress_image();
-    Scenario::backup_image();
-    
-    size_t i = 0;
     for (Test const& test: tests) {
-        if (i++ > 0)
-            Scenario::restore_image_backup();
-        diskio_image = Scenario::image();
+        
+        scenario.prepare_image();
         
         FFatResult r = f_fat32(ffat, F_INIT, 0);
         if (r != F_OK) {
@@ -78,11 +69,6 @@ static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, 
 
 int main(int argc, char* argv[])
 {
-    if (argc == 2 && std::string(argv[1]) == "-g") {
-        Scenario::generate_disk_creators();
-        return EXIT_SUCCESS;
-    }
-    
     uint8_t buffer[512];
     
     FFat32 ffat {

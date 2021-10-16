@@ -595,9 +595,12 @@ static FFatResult f_init(FFat32* f)
     }
     
     // fill out fields
-    f->reg.sectors_per_cluster = f->buffer[BPB_SECTORS_PER_CLUSTER];
     f->reg.fat_sector_start = from_16(f->buffer, BPB_RESERVED_SECTORS);
     f->reg.fat_size_sectors = from_32(f->buffer, BPB_FAT_SIZE_SECTORS);
+    
+    f->reg.sectors_per_cluster = f->buffer[BPB_SECTORS_PER_CLUSTER];
+    if (f->reg.sectors_per_cluster == 0)
+        return F_NOT_FAT_32;
     
     f->reg.number_of_fats = f->buffer[BPB_NUMBER_OF_FATS];
     f->reg.data_start_cluster = (f->reg.fat_sector_start + (f->reg.number_of_fats * f->reg.fat_size_sectors)) / f->reg.sectors_per_cluster - 2;

@@ -22,21 +22,15 @@ public:
     
     static std::vector<Scenario> all_scenarios();
     
-    static void generate_disk_creators();
-    
     static uint8_t* image() { return image_; }
-    static void backup_image();
-    static void restore_image_backup();
     
-    void decompress_image() const;
+    uint8_t* prepare_image() const;
     
 private:
     static constexpr uint8_t   v_partitions[] = { 0, 1, 2 };
     static constexpr DiskState v_disk_states[] = { DiskState::Empty, DiskState::FilesInRoot, DiskState::Complete };
     static constexpr uint16_t  v_disk_size[] = { 64, 256, 1024 };
     static constexpr uint8_t   v_sectors_per_cluster[] = { 1, 8, 32 };
-    
-    uint8_t const* link_to_compressed(size_t* file_size) const;
     
     static uint8_t image_[512 * 1024 * 1024];
     static uint8_t backup_[512 * 1024 * 1024];

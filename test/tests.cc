@@ -14,8 +14,6 @@ std::vector<Test> prepare_tests()
 {
     std::vector<Test> tests;
 
-#if 0
-    
     //
     // DISK OPERATIONS
     //
@@ -274,7 +272,6 @@ std::vector<Test> prepare_tests()
     }
     
     // endregion
-#endif
     
     tests.emplace_back(
             "Create dir at root",
@@ -325,7 +322,6 @@ std::vector<Test> prepare_tests()
     
     // TODO - remove dir
 
-#if 0
     //
     // STAT
     //
@@ -411,7 +407,6 @@ std::vector<Test> prepare_tests()
     // TODO - move file
     
     // TODO - move directory
-#endif
     
     return tests;
 }

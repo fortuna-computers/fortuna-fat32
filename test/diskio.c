@@ -10,9 +10,11 @@
 #include "ff/ff.h"			/* Obtains integer types */
 #include "ff/diskio.h"		/* Declarations of disk functions */
 
+#include <stdlib.h>
 #include <string.h>
 
 uint8_t* diskio_image = 0;
+uint64_t diskio_size = 0;
 
 /*-----------------------------------------------------------------------*/
 /* Get Drive Status                                                      */
@@ -74,10 +76,8 @@ DRESULT disk_write (
 )
 {
     (void) pdrv;
-    (void) buff;
-    (void) sector;
-    (void) count;
-	return RES_PARERR;
+    memcpy(&diskio_image[sector * 512], buff, count * 512);
+	return RES_OK;
 }
 
 #endif
@@ -94,9 +94,14 @@ DRESULT disk_ioctl (
 )
 {
     (void) pdrv;
-    (void) cmd;
-    (void) buff;
-	return RES_PARERR;
+    
+    switch (cmd) {
+        case GET_SECTOR_COUNT:
+            *(LBA_t*) buff = diskio_size;
+            return RES_OK;
+        default:
+            abort();
+    }
 }
 
 DWORD get_fattime (void)
