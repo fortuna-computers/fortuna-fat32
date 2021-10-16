@@ -13,7 +13,7 @@ static FFatResult result;
 std::vector<Test> prepare_tests()
 {
     std::vector<Test> tests;
-    
+
     //
     // DISK OPERATIONS
     //
@@ -24,7 +24,7 @@ std::vector<Test> prepare_tests()
             "Check label",
             
             [](FFat32* ffat, Scenario const&) {
-                f_fat32(ffat, F_LABEL);
+                f_fat32(ffat, F_LABEL, 0);
             },
             
             [](uint8_t const* buffer, Scenario const&, FATFS*) {
@@ -39,7 +39,7 @@ std::vector<Test> prepare_tests()
             "Check disk space (pre-existing)",
             
             [](FFat32* ffat, Scenario const&) {
-                f_fat32(ffat, F_FREE);
+                f_fat32(ffat, F_FREE, 0);
             },
             
             [](uint8_t const* buffer, Scenario const&, FATFS* fatfs) {
@@ -55,7 +55,7 @@ std::vector<Test> prepare_tests()
             "Check disk space (calculate)",
 
             [](FFat32* ffat, Scenario const&) {
-                f_fat32(ffat, F_FREE_R);
+                f_fat32(ffat, F_FREE_R, 0);
             },
 
             [](uint8_t const* buffer, Scenario const&, FATFS* fatfs) {
@@ -73,9 +73,9 @@ std::vector<Test> prepare_tests()
                 "Check disk space (calculate + read)",
 
                 [&](FFat32* ffat, Scenario const&) {
-                    f_fat32(ffat, F_FREE_R);
+                    f_fat32(ffat, F_FREE_R, 0);
                     free_1st_check = *(uint32_t *) ffat->buffer;
-                    f_fat32(ffat, F_FREE);
+                    f_fat32(ffat, F_FREE, 0);
                     free_2nd_check = *(uint32_t *) ffat->buffer;
                 },
                 
@@ -89,7 +89,7 @@ std::vector<Test> prepare_tests()
             "Load boot sector",
 
             [&](FFat32* ffat, Scenario const&) {
-                result = f_fat32(ffat, F_BOOT);
+                result = f_fat32(ffat, F_BOOT, 0);
             },
 
             [&](uint8_t const* buffer, Scenario const&, FATFS*) {
@@ -116,7 +116,7 @@ std::vector<Test> prepare_tests()
                     FFatResult r;
                     ffat->buffer[0] = F_START_OVER;
                     do {
-                        r = f_fat32(ffat, F_DIR);
+                        r = f_fat32(ffat, F_DIR, 0);
                         if (r != F_OK && r != F_MORE_DATA)
                             throw std::runtime_error("F_DIR reported error " + std::to_string(r));
                         add_files_to_dir_structure(ffat->buffer, directory);
@@ -153,9 +153,9 @@ std::vector<Test> prepare_tests()
 
                 [&](FFat32* ffat, Scenario const&) {
                     strcpy(reinterpret_cast<char*>(ffat->buffer), "HELLO");
-                    result = f_fat32(ffat, F_CD);
+                    result = f_fat32(ffat, F_CD, 0);
                     ffat->buffer[0] = F_START_OVER;
-                    f_fat32(ffat, F_DIR);
+                    f_fat32(ffat, F_DIR, 0);
                 },
 
                 [&](uint8_t const* buffer, Scenario const& scenario, FATFS*) {
@@ -179,9 +179,9 @@ std::vector<Test> prepare_tests()
             
                 [&](FFat32* ffat, Scenario const&) {
                     strcpy(reinterpret_cast<char*>(ffat->buffer), "HELLO/");
-                    result = f_fat32(ffat, F_CD);
+                    result = f_fat32(ffat, F_CD, 0);
                     ffat->buffer[0] = F_START_OVER;
-                    f_fat32(ffat, F_DIR);
+                    f_fat32(ffat, F_DIR, 0);
                 },
             
                 [&](uint8_t const* buffer, Scenario const& scenario, FATFS*) {
@@ -205,13 +205,13 @@ std::vector<Test> prepare_tests()
             
                 [&](FFat32* ffat, Scenario const& scenario) {
                     strcpy(reinterpret_cast<char*>(ffat->buffer), "HELLO");
-                    result = f_fat32(ffat, F_CD);
+                    result = f_fat32(ffat, F_CD, 0);
                     if (scenario.disk_state == Scenario::DiskState::Complete && result != F_OK)
                         throw std::runtime_error("Unexpected result.");
                     strcpy(reinterpret_cast<char*>(ffat->buffer), "/HELLO/WORLD");
-                    result = f_fat32(ffat, F_CD);
+                    result = f_fat32(ffat, F_CD, 0);
                     ffat->buffer[0] = F_START_OVER;
-                    f_fat32(ffat, F_DIR);
+                    f_fat32(ffat, F_DIR, 0);
                 },
             
                 [&](uint8_t const* buffer, Scenario const& scenario, FATFS*) {
@@ -233,11 +233,11 @@ std::vector<Test> prepare_tests()
         tests.emplace_back(
                 "Cd to root ('/') and dir",
             
-                [&](FFat32* ffat, Scenario const& scenario) {
+                [&](FFat32* ffat, Scenario const&) {
                     strcpy(reinterpret_cast<char*>(ffat->buffer), "/");
-                    result = f_fat32(ffat, F_CD);
+                    result = f_fat32(ffat, F_CD, 0);
                     ffat->buffer[0] = F_START_OVER;
-                    f_fat32(ffat, F_DIR);
+                    f_fat32(ffat, F_DIR, 0);
                 },
             
                 [&](uint8_t const* buffer, Scenario const& scenario, FATFS*) {
@@ -273,10 +273,55 @@ std::vector<Test> prepare_tests()
     
     // endregion
     
-    // TODO - create dir
+    tests.emplace_back(
+            "Create dir at root",
+
+            [&](FFat32* f, Scenario const&) {
+                strcpy((char *) f->buffer, "TEST");
+                result = f_fat32(f, F_MKDIR, 1981);
+            },
+
+            [&](uint8_t const*, Scenario const&, FATFS*) {
+                if (result != F_OK)
+                    return false;
+                
+                FILINFO filinfo;
+                FRESULT fresult = f_stat("/TEST", &filinfo);
+                if (fresult != FR_OK || filinfo.ftime != 1981 || !(filinfo.fattrib & AM_DIR))
+                    return false;
+                
+                return true;
+            }
+    );
+    
+    tests.emplace_back(
+            "Create dir at absolute location",
+            
+            [&](FFat32* f, Scenario const&) {
+                strcpy((char *) f->buffer, "/HELLO/FORTUNA/TEST");
+                result = f_fat32(f, F_MKDIR, 1981);
+            },
+            
+            [&](uint8_t const*, Scenario const& scenario, FATFS*) {
+                if (scenario.disk_state != Scenario::DiskState::Complete)
+                    return result != F_OK;
+                    
+                if (result != F_OK)
+                    return false;
+                
+                FILINFO filinfo;
+                FRESULT fresult = f_stat("/HELLO/FORTUNA/TEST", &filinfo);
+                if (fresult != FR_OK || filinfo.ftime != 1981 || !(filinfo.fattrib & AM_DIR))
+                    return false;
+                
+                return true;
+            }
+    );
+    
+    // TODO - create a dir in a dir with exactly 512 files
     
     // TODO - remove dir
-    
+
     //
     // STAT
     //
@@ -288,7 +333,7 @@ std::vector<Test> prepare_tests()
             
             [&](FFat32* ffat, Scenario const&) {
                 strcpy(reinterpret_cast<char*>(ffat->buffer), "HELLO");
-                result = f_fat32(ffat, F_STAT);
+                result = f_fat32(ffat, F_STAT, 0);
             },
             
             [&](uint8_t const* buffer, Scenario const& scenario, FATFS*) {
@@ -307,7 +352,7 @@ std::vector<Test> prepare_tests()
             
             [&](FFat32* ffat, Scenario const&) {
                 strcpy(reinterpret_cast<char*>(ffat->buffer), "/HELLO/WORLD/HELLO.TXT");
-                result = f_fat32(ffat, F_STAT);
+                result = f_fat32(ffat, F_STAT, 0);
             },
             
             [&](uint8_t const* buffer, Scenario const& scenario, FATFS*) {
@@ -331,7 +376,7 @@ std::vector<Test> prepare_tests()
             
             [&](FFat32* ffat, Scenario const&) {
                 strcpy(reinterpret_cast<char*>(ffat->buffer), "/HELLO/");
-                result = f_fat32(ffat, F_STAT);
+                result = f_fat32(ffat, F_STAT, 0);
             },
             
             [&](uint8_t const* buffer, Scenario const& scenario, FATFS*) {

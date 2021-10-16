@@ -40,6 +40,8 @@ typedef enum {
     F_BYTES_PER_SECTOR_NOT_512  = 0x4,
     F_INEXISTENT_FILE_OR_DIR    = 0x5,
     F_FILE_PATH_TOO_LONG        = 0x6,
+    F_INVALID_FILENAME          = 0x7,
+    F_DISK_FULL                 = 0x8,
 } FFatResult;
 
 typedef enum {
@@ -50,8 +52,8 @@ typedef enum {
 typedef struct {
     FFatResult last_operation_result : 8;
     uint8_t    sectors_per_cluster;
-    uint8_t    _unused1;  // TODO
-    uint8_t    _unused2;  // TODO
+    uint8_t    number_of_fats;
+    uint8_t    _unused;    // TODO
     
     uint32_t   partition_start;
     uint32_t   fat_sector_start;
@@ -76,7 +78,7 @@ typedef struct {
 extern "C" {
 #endif
 
-FFatResult f_fat32(FFat32* f, FFat32Op operation);
+FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime);
 
 #ifdef __cplusplus
 }

@@ -51,7 +51,7 @@ static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, 
             Scenario::restore_image_backup();
         diskio_image = Scenario::image();
         
-        FFatResult r = f_fat32(ffat, F_INIT);
+        FFatResult r = f_fat32(ffat, F_INIT, 0);
         if (r != F_OK) {
             std::cout << " Error initializing FAT32 volume: " << r << "\n";
             exit(EXIT_FAILURE);

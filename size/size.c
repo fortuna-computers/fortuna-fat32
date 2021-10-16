@@ -2,19 +2,20 @@
 
 int main()
 {
-    f_fat32(0, F_INIT);
-    f_fat32(0, F_LABEL);
-    f_fat32(0, F_FREE);
-    f_fat32(0, F_FREE_R);
-    f_fat32(0, F_CD);
-    f_fat32(0, F_DIR);
-    f_fat32(0, F_MKDIR);
-    f_fat32(0, F_RMDIR);
-    f_fat32(0, F_OPEN);
-    f_fat32(0, F_CLOSE);
-    f_fat32(0, F_READ);
-    f_fat32(0, F_WRITE);
-    f_fat32(0, F_STAT);
-    f_fat32(0, F_RM);
-    f_fat32(0, F_MV);
+    FFat32 f;
+    f_fat32(&f, F_INIT, 0);
+    f_fat32(&f, F_LABEL, 0);
+    f_fat32(&f, F_FREE, 0);
+    f_fat32(&f, F_FREE_R, 0);
+    f_fat32(&f, F_CD, 0);
+    f_fat32(&f, F_DIR, 0);
+    f_fat32(&f, F_MKDIR, 0);
+    f_fat32(&f, F_RMDIR, 0);
+    f_fat32(&f, F_OPEN, 0);
+    f_fat32(&f, F_CLOSE, 0);
+    f_fat32(&f, F_READ, 0);
+    f_fat32(&f, F_WRITE, 0);
+    f_fat32(&f, F_STAT, 0);
+    f_fat32(&f, F_RM, 0);
+    f_fat32(&f, F_MV, 0);
 }
