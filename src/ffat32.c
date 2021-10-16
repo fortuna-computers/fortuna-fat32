@@ -1,3 +1,7 @@
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#error Sorry, only little endian platforms are supported right now.
+#endif
+
 #include "ffat32.h"
 
 #include <stdint.h>
