@@ -704,7 +704,7 @@ static FFatResult f_mkdir(FFat32* f, uint32_t fat_datetime)
     uint32_t parent_dir_cluster;
     
     // create file entry
-    int64_t cluster_self;
+    int64_t cluster_self = 0;
     if ((cluster_self = create_file_entry(f, (char *) f->buffer, ATTR_DIR, fat_datetime, &parent_dir_cluster)) < 0)
         return -cluster_self;
     
