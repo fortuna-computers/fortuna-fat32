@@ -523,7 +523,7 @@ static void create_entry_in_directory(FFat32* f, uint32_t path_cluster, char fil
     memcpy(dir_entry.name, filename, FILENAME_SZ);
     memcpy(&f->buffer[dir_entry_ptr.entry_ptr], &dir_entry, sizeof(FDirEntry));
     
-    write_cluster(f, dir_entry_ptr.cluster, dir_entry_ptr.sector);
+    write_cluster(f, dir_entry_ptr.cluster + f->reg.data_start_cluster, dir_entry_ptr.sector);
 }
 
 static void update_fsinfo(uint32_t last_cluster, int64_t change_in_size)
@@ -689,12 +689,12 @@ static FFatResult f_mkdir(FFat32* f, uint32_t fat_datetime)
     
     // create file entry
     int64_t cluster_self;
-    if ((cluster_self = create_file_entry(f, (char *) f->buffer, DIR_ATTR, fat_datetime, &parent_dir_cluster)) < 0)
+    if ((cluster_self = create_file_entry(f, (char *) f->buffer, ATTR_DIR, fat_datetime, &parent_dir_cluster)) < 0)
         return -cluster_self;
     
     // create empty directory structure ('.' and '..')
-    create_entry_in_directory(f, parent_dir_cluster, ".", DIR_ATTR, fat_datetime, cluster_self);
-    create_entry_in_directory(f, parent_dir_cluster, "..", DIR_ATTR, fat_datetime, parent_dir_cluster);
+    create_entry_in_directory(f, parent_dir_cluster, ".", ATTR_DIR, fat_datetime, cluster_self);
+    create_entry_in_directory(f, parent_dir_cluster, "..", ATTR_DIR, fat_datetime, parent_dir_cluster);
     
     return F_OK;
 }
