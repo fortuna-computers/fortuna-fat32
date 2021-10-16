@@ -393,9 +393,10 @@ static int64_t find_file_cluster(FFat32* f, const char* filename, uint16_t* file
 
 // region ...
 
-typedef struct {
+typedef struct __attribute__((__packed__)) {
     char     name[11];
     uint8_t  attrib;
+    uint8_t  nt_res;
     uint8_t  time_tenth;
     uint32_t crt_datetime;
     uint16_t last_acc_time;
@@ -512,6 +513,7 @@ static void create_entry_in_directory(FFat32* f, uint32_t path_cluster, char fil
     FDirEntry dir_entry = {
             .name = { 0 },
             .attrib = attrib,
+            .nt_res = 0,
             .time_tenth = 0,
             .crt_datetime = fat_datetime,
             .last_acc_time = fat_datetime & 0xff,
