@@ -284,7 +284,7 @@ std::vector<Test> prepare_tests()
                 result = f_fat32(f, F_MKDIR, 1981);
             },
 
-            [&](uint8_t const* buffer, Scenario const& scenario, FATFS*) {
+            [&](uint8_t const*, Scenario const&, FATFS*) {
                 if (result != F_OK)
                     return false;
                 
@@ -297,7 +297,29 @@ std::vector<Test> prepare_tests()
             }
     );
     
-    // TODO - create a dir at an absolute location
+    tests.emplace_back(
+            "Create dir at absolute location",
+            
+            [&](FFat32* f, Scenario const&) {
+                strcpy((char *) f->buffer, "/HELLO/FORTUNA/TEST");
+                result = f_fat32(f, F_MKDIR, 1981);
+            },
+            
+            [&](uint8_t const*, Scenario const& scenario, FATFS*) {
+                if (scenario.disk_state != Scenario::DiskState::Complete)
+                    return result != F_OK;
+                    
+                if (result != F_OK)
+                    return false;
+                
+                FILINFO filinfo;
+                FRESULT fresult = f_stat("/HELLO/FORTUNA/TEST", &filinfo);
+                if (fresult != FR_OK || filinfo.ftime != 1981 || !(filinfo.fattrib & AM_DIR))
+                    return false;
+                
+                return true;
+            }
+    );
     
     // TODO - create a dir in a dir with exactly 512 files
     
