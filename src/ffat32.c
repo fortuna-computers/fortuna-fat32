@@ -479,6 +479,8 @@ static DirEntryPtr find_next_free_directory_entry(FFat32* f, uint32_t path_clust
             .found = true,
     };
     
+    // check all dir entries in the cluster
+search_cluster:
     for (dir_entry_ptr.sector = 0; dir_entry_ptr.sector < f->reg.sectors_per_cluster; ++dir_entry_ptr.sector) {
         load_cluster(f, dir_entry_ptr.cluster + f->reg.data_start_cluster, dir_entry_ptr.sector);
         for (dir_entry_ptr.entry_ptr = 0; dir_entry_ptr.entry_ptr < BYTES_PER_SECTOR; dir_entry_ptr.entry_ptr += DIR_ENTRY_SZ) {
@@ -488,6 +490,14 @@ static DirEntryPtr find_next_free_directory_entry(FFat32* f, uint32_t path_clust
         }
     }
     
+    // if not found, go to next cluster until EOC
+    uint32_t next_cluster = fat_cluster_ptr(f, dir_entry_ptr.cluster);
+    if (next_cluster != FAT_EOC && next_cluster != FAT_EOF) {
+        dir_entry_ptr.cluster = next_cluster;
+        goto search_cluster;
+    }
+    
+    // not found
     dir_entry_ptr.found = false;
     return dir_entry_ptr;
 }

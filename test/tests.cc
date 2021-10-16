@@ -299,7 +299,7 @@ std::vector<Test> prepare_tests()
     
     // TODO - create a dir at an absolute location
     
-    // TODO - create a dir in a dir with more that 128 files/directories
+    // TODO - create a dir in a dir with exactly 512 files
     
     // TODO - remove dir
 
