@@ -109,23 +109,62 @@ void Scenario::partition_disk() const
 
 void Scenario::add_files_in_root() const
 {
+    extern uint8_t _binary_test_TAGS_TXT_start[];
+    extern uint8_t _binary_test_TAGS_TXT_size;
+    
+    FIL fp;
+    UINT bw;
+    
+    R(f_open(&fp, "HELLO/WORLD/HELLO.TXT", FA_CREATE_NEW | FA_WRITE));
+    const char* contents = "Hello world!";
+    R(f_write(&fp, contents, strlen(contents), &bw));
+    R(f_close(&fp));
+    
+    R(f_open(&fp, "TAGS.TXT", FA_CREATE_NEW | FA_WRITE));
+    R(f_write(&fp, _binary_test_TAGS_TXT_start, (size_t) &_binary_test_TAGS_TXT_size, &bw));
+    R(f_close(&fp));
 }
 
 void Scenario::add_complete_files() const
 {
+    extern uint8_t _binary_test_TAGS_TXT_start[];
+    extern uint8_t _binary_test_TAGS_TXT_size;
+    
     FIL fp;
     UINT bw;
     
-    R(f_open(&fp, "HELLO.TXT", FA_CREATE_NEW | FA_WRITE));
+    R(f_mkdir("HELLO"));
+    R(f_mkdir("HELLO/FORTUNA"));   // empty dir
+    R(f_mkdir("HELLO/WORLD"));
+    
+    R(f_open(&fp, "FORTUNA.DAT", FA_CREATE_NEW | FA_WRITE));
     const char* contents = "Hello world!";
     R(f_write(&fp, contents, strlen(contents), &bw));
     R(f_close(&fp));
-
+    
+    R(f_open(&fp, "TAGS.TXT", FA_CREATE_NEW | FA_WRITE));
+    R(f_write(&fp, _binary_test_TAGS_TXT_start, (size_t) &_binary_test_TAGS_TXT_size, &bw));
+    R(f_close(&fp));
+    
+    R(f_open(&fp, "HELLO/WORLD/HELLO.TXT", FA_CREATE_NEW | FA_WRITE));
+    contents = "Hello world!";
+    R(f_write(&fp, contents, strlen(contents), &bw));
+    R(f_close(&fp));
 }
 
 void Scenario::add_many_files(size_t count) const
 {
-
+    FIL fp;
+    UINT bw;
+    
+    for (size_t i = 1; i <= count; ++i) {
+        char filename[12];
+        sprintf(filename, "FILE%03zu.BIN", i);
+        R(f_open(&fp, filename, FA_CREATE_NEW | FA_WRITE));
+        const char* contents = "File contents";
+        R(f_write(&fp, contents, strlen(contents), &bw));
+        R(f_close(&fp));
+    }
 }
 
 void Scenario::end_scenario() const
