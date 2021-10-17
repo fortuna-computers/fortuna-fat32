@@ -52,7 +52,7 @@ void Scenario::prepare_scenario() const
     diskio_size = (disk_size * 1024 * 1024) / 512;
     
     // prepare image
-    // clear_disk();
+    clear_disk();
     partition_disk();
     format_disk();
     switch (disk_state) {
