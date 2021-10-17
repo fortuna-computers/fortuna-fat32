@@ -275,12 +275,12 @@ std::vector<Test> prepare_tests()
     tests.emplace_back(
             "Create dir at root",
 
-            [&](FFat32* f, Scenario const&) {
+            [&](FFat32* f, Scenario const& scenario) {
                 strcpy((char *) f->buffer, "TEST");
                 result = f_fat32(f, F_MKDIR, 1981);
             },
 
-            [&](uint8_t const*, Scenario const&) {
+            [&](uint8_t const*, Scenario const& scenario) {
                 if (result != F_OK)
                     return false;
                 

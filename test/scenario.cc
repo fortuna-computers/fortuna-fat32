@@ -38,7 +38,6 @@ std::vector<Scenario> Scenario::all_scenarios()
 
 void Scenario::store_image_in_disk(std::string const& filename) const
 {
-    prepare_scenario();
     std::ofstream file(filename, std::ios::binary);
     file.write(reinterpret_cast<char const*>(image_), (disk_size * 1024 * 1024));
 }
