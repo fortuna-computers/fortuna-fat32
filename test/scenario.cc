@@ -75,7 +75,7 @@ void Scenario::prepare_scenario() const
 }
 
 void Scenario::clear_disk() const {
-    memset(image_, 0, sizeof image_);
+    // memset(image_, 0, sizeof image_);
 }
 
 void Scenario::format_disk() const
@@ -109,15 +109,17 @@ void Scenario::partition_disk() const
 
 void Scenario::add_files_in_root() const
 {
-    FIL fp;
-    R(f_open(&fp, "HELLO.TXT", FA_CREATE_NEW | FA_WRITE));
-    const char* contents = "Hello world!";
-    R(f_write(&fp, contents, strlen(contents), nullptr));
-    R(f_close(&fp));
 }
 
 void Scenario::add_complete_files() const
 {
+    FIL fp;
+    UINT bw;
+    
+    R(f_open(&fp, "HELLO.TXT", FA_CREATE_NEW | FA_WRITE));
+    const char* contents = "Hello world!";
+    R(f_write(&fp, contents, strlen(contents), &bw));
+    R(f_close(&fp));
 
 }
 
