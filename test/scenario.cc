@@ -25,8 +25,8 @@ std::vector<Scenario> Scenario::all_scenarios()
     scenarios.emplace_back(i++, "Standard empty disk", 1, DiskState::Empty, 256, 4);
     scenarios.emplace_back(i++, "Standard disk with files in root dir", 1, DiskState::FilesInRoot, 256, 4);
     
-    scenarios.emplace_back(i++, "Raw image without partitions", 0, DiskState::Complete, 256, 4);
-    scenarios.emplace_back(i++, "Image with 2 partitions", 2, DiskState::Complete, 256, 4);
+    // scenarios.emplace_back(i++, "Raw image without partitions", 0, DiskState::Complete, 256, 4);
+    scenarios.emplace_back(i++, "Image with 2 partitions", 2, DiskState::Complete, 512, 4);
     
     scenarios.emplace_back(i++, "Disk with one sector per cluster", 1, DiskState::Complete, 64, 1);
     scenarios.emplace_back(i++, "Disk with 8 sectors per cluster", 1, DiskState::Complete, 512, 8);
@@ -53,7 +53,7 @@ void Scenario::prepare_scenario() const
     diskio_size = (disk_size * 1024 * 1024) / 512;
     
     // prepare image
-    clear_disk();
+    // clear_disk();
     partition_disk();
     format_disk();
     switch (disk_state) {
@@ -75,7 +75,7 @@ void Scenario::prepare_scenario() const
 }
 
 void Scenario::clear_disk() const {
-    // memset(image_, 0, sizeof image_);
+    memset(image_, 0, sizeof image_);
 }
 
 void Scenario::format_disk() const
@@ -85,7 +85,7 @@ void Scenario::format_disk() const
     MKFS_PARM mkfs_parm = {
             .fmt = FM_FAT32,
             .n_fat = 2,
-            .align = 512,
+            .align = 1,
             .n_root = 0,
             .au_size = sectors_per_cluster * 512U,
     };
@@ -115,7 +115,7 @@ void Scenario::add_files_in_root() const
     FIL fp;
     UINT bw;
     
-    R(f_open(&fp, "HELLO/WORLD/HELLO.TXT", FA_CREATE_NEW | FA_WRITE));
+    R(f_open(&fp, "HELLO.TXT", FA_CREATE_NEW | FA_WRITE));
     const char* contents = "Hello world!";
     R(f_write(&fp, contents, strlen(contents), &bw));
     R(f_close(&fp));
@@ -128,7 +128,7 @@ void Scenario::add_files_in_root() const
 void Scenario::add_complete_files() const
 {
     extern uint8_t _binary_test_TAGS_TXT_start[];
-    extern uint8_t _binary_test_TAGS_TXT_size;
+    extern uint8_t _binary_test_TAGS_TXT_end[];
     
     FIL fp;
     UINT bw;
@@ -143,7 +143,7 @@ void Scenario::add_complete_files() const
     R(f_close(&fp));
     
     R(f_open(&fp, "TAGS.TXT", FA_CREATE_NEW | FA_WRITE));
-    R(f_write(&fp, _binary_test_TAGS_TXT_start, (size_t) &_binary_test_TAGS_TXT_size, &bw));
+    R(f_write(&fp, _binary_test_TAGS_TXT_start, _binary_test_TAGS_TXT_end - _binary_test_TAGS_TXT_start, &bw));
     R(f_close(&fp));
     
     R(f_open(&fp, "HELLO/WORLD/HELLO.TXT", FA_CREATE_NEW | FA_WRITE));
