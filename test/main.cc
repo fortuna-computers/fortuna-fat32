@@ -39,8 +39,8 @@ static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, 
     std::cout << std::left << std::setw(43) << scenario.name;
     
     for (Test const& test: tests) {
-        
-        scenario.prepare_image();
+    
+        scenario.prepare_scenario();
         
         FFatResult r = f_fat32(ffat, F_INIT, 0);
         if (r != F_OK) {
@@ -48,11 +48,8 @@ static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, 
             exit(EXIT_FAILURE);
         }
         
-        FATFS fatfs;
-        f_mount(&fatfs, "", 0);
-        
         test.execute(ffat, scenario);
-        if (test.verify(buffer, scenario, &fatfs)) {
+        if (test.verify(buffer, scenario)) {
             std::cout << GRN "\u2713" RST;
         } else {
             std::cout << RED "X" RST;
@@ -60,7 +57,7 @@ static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, 
         }
         std::cout.flush();
     
-        f_mount(nullptr, "", 0);
+        scenario.end_scenario();
     }
     
     std::cout << "\n";

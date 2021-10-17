@@ -96,6 +96,8 @@ DRESULT disk_ioctl (
     (void) pdrv;
     
     switch (cmd) {
+        case CTRL_SYNC:
+            return RES_OK;
         case GET_SECTOR_COUNT:
             *(LBA_t*) buff = diskio_size;
             return RES_OK;

@@ -587,11 +587,11 @@ static FFatResult f_init(FFat32* f)
 {
     // check partition location
     f->read(MBR, f->buffer, f->data);
-    if (f->buffer[0] == 0xfa) {  // this is a MBR
+    if (f->buffer[0] == 0xeb) {  // this is a FAT partition
+        f->reg.partition_start = 0;
+    } else {
         f->reg.partition_start = from_32(f->buffer, PARTITION_TABLE_1);
         load_sector(f, BOOT_SECTOR);
-    } else {
-        f->reg.partition_start = 0;
     }
     
     // fill out fields
