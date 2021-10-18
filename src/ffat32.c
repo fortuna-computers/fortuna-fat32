@@ -177,6 +177,17 @@ static uint32_t fat_find_first_free_cluster(FFat32* f, uint32_t start_at)
 static uint32_t fat_append_cluster(uint32_t cluster)
 {
     // TODO
+    
+    // get next cluster from FSINFO
+    
+    // find next free cluster (cluster F)
+    
+    // point the previous cluster to cluster F
+    
+    // set the cluster F as EOC
+    
+    // update FSINFO
+    
     return 0;
 }
 
