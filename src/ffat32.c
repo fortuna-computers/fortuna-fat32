@@ -227,6 +227,8 @@ static FSInfo fsinfo_recalculate_values(FFat32* f)
         }
     }
     
+    total_free -= f->reg.data_start_cluster;
+    
     load_sector(f, FSINFO_SECTOR);
     to_32(f->buffer, FSI_FREE_COUNT, total_free);
     to_32(f->buffer, FSI_NEXT_FREE, next_free);
@@ -641,20 +643,6 @@ static FFatResult f_init(FFat32* f)
 
 //region ...
 
-static FFatResult f_label(FFat32* f)
-{
-    load_sector(f, BOOT_SECTOR);
-    memcpy(f->buffer, &f->buffer[BPB_LABEL], LABEL_SZ);
-    for (int8_t i = LABEL_SZ - 1; i >= 0; --i) {
-        if (f->buffer[i] == ' ')
-            f->buffer[i] = '\0';
-        else
-            break;
-    }
-    
-    return F_OK;
-}
-
 static FFatResult f_free_r(FFat32* f)
 {
     FSInfo fs_info = fsinfo_recalculate_values(f);
@@ -768,7 +756,6 @@ FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime)
         case F_INIT:   f->reg.last_operation_result = f_init(f);   break;
         case F_FREE:   f->reg.last_operation_result = f_free(f);   break;
         case F_FREE_R: f->reg.last_operation_result = f_free_r(f); break;
-        case F_LABEL:  f->reg.last_operation_result = f_label(f);  break;
         case F_BOOT:   f->reg.last_operation_result = f_boot(f);   break;
         case F_DIR:    f->reg.last_operation_result = f_dir(f);    break;
         case F_CD:     f->reg.last_operation_result = f_cd(f);     break;

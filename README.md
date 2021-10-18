@@ -21,9 +21,8 @@ Disk operations:
 
 | Operation | Description | Input | Output |
 |-----------|-------------|-------|--------|
-| `F_LABEL` | Get volume label | - | `000 - 010`: Volume label |
-| `F_FREE`  | Free disk space (from FSInfo) | - | `000 - 003`: Space, in bytes |
-| `F_FREE_R`  | Free disk space (recalculate from FAT) | - | `000 - 003`: Space, in bytes |
+| `F_FREE`  | Free disk space (from FSInfo) | - | `000 - 003`: Space, in clusters |
+| `F_FREE_R`  | Free disk space (recalculate from FAT) | - | `000 - 003`: Space, in clusters |
 | `F_BOOT` | Load boot sector | - | The 512-byte boot sector |
 
 Directory operations:

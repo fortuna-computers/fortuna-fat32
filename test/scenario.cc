@@ -52,7 +52,7 @@ void Scenario::prepare_scenario() const
     diskio_size = (disk_size * 1024 * 1024) / 512;
     
     // prepare image
-    clear_disk();
+    // clear_disk();
     partition_disk();
     format_disk();
     switch (disk_state) {
@@ -73,6 +73,19 @@ void Scenario::prepare_scenario() const
     }
 }
 
+void Scenario::end_scenario() const
+{
+    R(f_mount(nullptr, "", 0));
+}
+
+void Scenario::remount() const
+{
+    R(f_mount(nullptr, "", 0));
+    
+    memset(&fatfs, 0, sizeof(FATFS));
+    R(f_mount(&fatfs, "", 0));
+}
+
 void Scenario::clear_disk() const {
     memset(image_, 0, sizeof image_);
 }
@@ -89,7 +102,10 @@ void Scenario::format_disk() const
             .au_size = sectors_per_cluster * 512U,
     };
     R(f_mkfs("", &mkfs_parm, work, sizeof work));
+    
+    memset(&fatfs, 0, sizeof(FATFS));
     R(f_mount(&fatfs, "", 0));
+    
     R(f_setlabel("FORTUNA"));
 }
 
@@ -164,11 +180,6 @@ void Scenario::add_many_files(size_t count) const
         R(f_write(&fp, contents, strlen(contents), &bw));
         R(f_close(&fp));
     }
-}
-
-void Scenario::end_scenario() const
-{
-    R(f_mount(nullptr, "", 0));
 }
 
 void Scenario::R(FRESULT fresult) const

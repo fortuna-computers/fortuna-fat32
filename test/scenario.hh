@@ -28,6 +28,8 @@ public:
     void prepare_scenario() const;
     void end_scenario() const;
     
+    void remount() const;
+    
     void store_image_in_disk(std::string const& filename) const;
     
     DWORD get_free_space() const;

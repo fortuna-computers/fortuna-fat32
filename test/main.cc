@@ -49,6 +49,7 @@ static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, 
         }
         
         test.execute(ffat, scenario);
+        scenario.remount();
         if (test.verify(buffer, scenario)) {
             std::cout << GRN "\u2713" RST;
         } else {
@@ -64,7 +65,7 @@ static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, 
 }
 
 
-int main(int argc, char* argv[])
+int main()
 {
     uint8_t buffer[512];
     

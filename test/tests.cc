@@ -19,22 +19,6 @@ std::vector<Test> prepare_tests()
     //
     
     // region ...
-    
-    tests.emplace_back(
-            "Check label",
-            
-            [](FFat32* ffat, Scenario const&) {
-                f_fat32(ffat, F_LABEL, 0);
-            },
-            
-            [](uint8_t const* buffer, Scenario const&) {
-                char label[50];
-                if (f_getlabel("", label, nullptr) != FR_OK)
-                    throw std::runtime_error("f_getlabel error");
-                return strcmp((char const*) buffer, label) == 0;
-            }
-    );
-    
     tests.emplace_back(
             "Check disk space (pre-existing)",
             
@@ -52,7 +36,7 @@ std::vector<Test> prepare_tests()
     tests.emplace_back(
             "Check disk space (calculate)",
 
-            [](FFat32* ffat, Scenario const&) {
+            [](FFat32* ffat, Scenario const& scenario) {
                 f_fat32(ffat, F_FREE_R, 0);
             },
 
@@ -271,28 +255,29 @@ std::vector<Test> prepare_tests()
     }
     
     // endregion
-    
+
     tests.emplace_back(
             "Create dir at root",
 
-            [&](FFat32* f, Scenario const& scenario) {
+            [&](FFat32* f, Scenario const&) {
                 strcpy((char *) f->buffer, "TEST");
                 result = f_fat32(f, F_MKDIR, 1981);
             },
 
-            [&](uint8_t const*, Scenario const& scenario) {
+            [&](uint8_t const*, Scenario const&) {
                 if (result != F_OK)
                     return false;
                 
+                DIR dp;
                 FILINFO filinfo;
-                FRESULT fresult = f_stat("/TEST", &filinfo);
+                FRESULT fresult = f_findfirst(&dp, &filinfo, "/", "TEST");
                 if (fresult != FR_OK || filinfo.ftime != 1981 || !(filinfo.fattrib & AM_DIR))
                     return false;
                 
                 return true;
             }
     );
-    
+
     tests.emplace_back(
             "Create dir at absolute location",
             
