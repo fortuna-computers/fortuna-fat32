@@ -18,20 +18,18 @@ std::vector<Scenario> Scenario::all_scenarios()
 {
     std::vector<Scenario> scenarios;
     
-    size_t i = 0;
+    scenarios.emplace_back("Standard disk with directories and files", 1, DiskState::Complete, 256, 4);
     
-    scenarios.emplace_back(i++, "Standard disk with directories and files", 1, DiskState::Complete, 256, 4);
+    scenarios.emplace_back("Standard empty disk", 1, DiskState::Empty, 256, 4);
+    scenarios.emplace_back("Standard disk with files in root dir", 1, DiskState::FilesInRoot, 256, 4);
     
-    scenarios.emplace_back(i++, "Standard empty disk", 1, DiskState::Empty, 256, 4);
-    scenarios.emplace_back(i++, "Standard disk with files in root dir", 1, DiskState::FilesInRoot, 256, 4);
+    scenarios.emplace_back("Raw image without partitions", 0, DiskState::Complete, 256, 4);
+    scenarios.emplace_back("Image with 2 partitions", 2, DiskState::Complete, 512, 4);
     
-    scenarios.emplace_back(i++, "Raw image without partitions", 0, DiskState::Complete, 256, 4);
-    scenarios.emplace_back(i++, "Image with 2 partitions", 2, DiskState::Complete, 512, 4);
+    scenarios.emplace_back("Disk with one sector per cluster", 1, DiskState::Complete, 64, 1);
+    scenarios.emplace_back("Disk with 8 sectors per cluster", 1, DiskState::Complete, 512, 8);
     
-    scenarios.emplace_back(i++, "Disk with one sector per cluster", 1, DiskState::Complete, 64, 1);
-    scenarios.emplace_back(i++, "Disk with 8 sectors per cluster", 1, DiskState::Complete, 512, 8);
-    
-    scenarios.emplace_back(i++, "Standard disk with 300 files", 1, DiskState::Files300, 256, 4);
+    scenarios.emplace_back("Standard disk with 300 files", 1, DiskState::Files300, 256, 4);
     
     return scenarios;
 }

@@ -9,6 +9,7 @@
 
 static std::vector<File> directory;
 static FFatResult result;
+static uint32_t free_1st_check, free_2nd_check;
 
 std::vector<Test> prepare_tests()
 {
@@ -36,7 +37,7 @@ std::vector<Test> prepare_tests()
     tests.emplace_back(
             "Check disk space (calculate)",
 
-            [](FFat32* ffat, Scenario const& scenario) {
+            [](FFat32* ffat, Scenario const&) {
                 f_fat32(ffat, F_FREE_R, 0);
             },
 
@@ -47,26 +48,23 @@ std::vector<Test> prepare_tests()
             }
     );
 
-#if 0
     {
-        uint32_t free_1st_check, free_2nd_check;
         tests.emplace_back(
                 "Check disk space (calculate + read)",
 
-                [&](FFat32* ffat, Scenario const&) {
+                [&](FFat32* ffat, Scenario const& scenario) {
                     f_fat32(ffat, F_FREE_R, 0);
                     free_1st_check = *(uint32_t *) ffat->buffer;
                     f_fat32(ffat, F_FREE, 0);
                     free_2nd_check = *(uint32_t *) ffat->buffer;
                 },
                 
-                [&](uint8_t const*, Scenario const&) {
+                [&](uint8_t const*, Scenario const& scenario) {
                     return free_1st_check == free_2nd_check;
                 }
         );
     }
-  #endif
-    
+
     tests.emplace_back(
             "Load boot sector",
 
@@ -254,8 +252,6 @@ std::vector<Test> prepare_tests()
         );
     }
     
-    // endregion
-
     tests.emplace_back(
             "Create dir at root",
 
@@ -305,7 +301,9 @@ std::vector<Test> prepare_tests()
     // TODO - create a dir in a dir with exactly 512 files
     
     // TODO - remove dir
-
+    
+    // endregion
+    
     //
     // STAT
     //

@@ -10,11 +10,10 @@ class Scenario {
 public:
     enum class DiskState { Empty, FilesInRoot, Complete, Files300, Files512 };
     
-    Scenario(uint8_t number, std::string const& name, uint8_t partitions, DiskState disk_state, uint16_t disk_size, uint16_t sectors_per_cluster)
-             : number(number), name(name), partitions(partitions), disk_state(disk_state), disk_size(disk_size),
+    Scenario(std::string const& name, uint8_t partitions, DiskState disk_state, uint16_t disk_size, uint16_t sectors_per_cluster)
+             : name(name), partitions(partitions), disk_state(disk_state), disk_size(disk_size),
                sectors_per_cluster(sectors_per_cluster) {}
                
-    const uint8_t     number;
     const std::string name;
     const uint8_t     partitions;
     const DiskState   disk_state;

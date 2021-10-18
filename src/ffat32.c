@@ -189,7 +189,7 @@ static uint32_t fat_append_cluster(uint32_t cluster)
 // region ...
 
 typedef struct {
-    uint32_t next_free_cluster;
+    uint32_t last_used_cluster;
     uint32_t free_cluster_count;
 } FSInfo;
 
@@ -208,35 +208,35 @@ static int64_t fsinfo_recalculate_next_free(FFat32* f)
 
 static FSInfo fsinfo_recalculate_values(FFat32* f)
 {
-    uint32_t total_free = 0;
-    uint32_t next_free = 0;
+    uint32_t total_free_clusters = 0;
+    uint32_t last_used_cluster = 0;
     
-    // count free sectors on FAT
+    // count free clusters on FAT
     uint32_t pos = f->reg.fat_sector_start;
     uint32_t count = 0;
-    for (uint32_t i = 0; i < f->reg.fat_size_sectors; ++i) {
+    for (uint64_t i = 0; i < f->reg.fat_size_sectors; ++i) {
         load_sector(f, pos + i);
         for (uint32_t j = 0; j < BYTES_PER_SECTOR / 4; ++j) {
             uint32_t pointer = from_32(f->buffer, j * 4);
-            if (pointer == 0x0) {
-                if (next_free == 0)
-                    next_free = count;
-                ++total_free;
+            if (pointer == FAT_FREE) {
+                if (last_used_cluster == 0)
+                    last_used_cluster = count;
+                ++total_free_clusters;
             }
             ++count;
         }
     }
     
-    total_free -= f->reg.data_start_cluster;
+    total_free_clusters -= f->reg.data_start_cluster;
     
     load_sector(f, FSINFO_SECTOR);
-    to_32(f->buffer, FSI_FREE_COUNT, total_free);
-    to_32(f->buffer, FSI_NEXT_FREE, next_free);
+    to_32(f->buffer, FSI_FREE_COUNT, total_free_clusters);
+    to_32(f->buffer, FSI_NEXT_FREE, last_used_cluster);
     write_sector(f, FSINFO_SECTOR);
     
     return (FSInfo) {
-        .free_cluster_count = total_free,
-        .next_free_cluster = next_free,
+        .free_cluster_count = total_free_clusters,
+        .last_used_cluster = last_used_cluster,
     };
 }
 
