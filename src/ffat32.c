@@ -227,6 +227,8 @@ static FSInfo fsinfo_recalculate_values(FFat32* f)
         }
     }
     
+    total_free -= f->reg.data_start_cluster;
+    
     load_sector(f, FSINFO_SECTOR);
     to_32(f->buffer, FSI_FREE_COUNT, total_free);
     to_32(f->buffer, FSI_NEXT_FREE, next_free);
@@ -296,6 +298,15 @@ static FDirResult dir(FFat32* f, uint32_t dir_cluster, FContinuation continuatio
 static void parse_filename(char result[11], char const* filename, size_t filename_sz)
 {
     memset(result, ' ', FILENAME_SZ);
+    
+    if (strcmp(result, ".") == 0) {
+        result[0] = '.';
+        return;
+    } else if (strcmp(result, "..") == 0) {
+        strcpy(result, "..");
+        return;
+    }
+    
     uint8_t pos = 0, i = 0;
     while (pos < FILENAME_SZ) {
         if (filename[i] == 0 || i == filename_sz) {
@@ -564,7 +575,7 @@ static int64_t create_file_entry(FFat32* f, char* file_path, uint8_t attrib, uin
     int64_t file_contents_cluster = find_next_free_cluster(f);
     if (file_contents_cluster < 0)
         return file_contents_cluster;
-    fat_set_cluster_ptr(f, file_contents_cluster, FAT_EOC);
+    fat_set_cluster_ptr(f, file_contents_cluster, FAT_EOF);
     
     // create directory entry in parent directory
     create_entry_in_directory(f, path_cluster, filename, attrib, fat_datetime, file_contents_cluster);
@@ -572,7 +583,7 @@ static int64_t create_file_entry(FFat32* f, char* file_path, uint8_t attrib, uin
     // update FSINFO
     update_fsinfo(f, file_contents_cluster, +1);
     
-    return F_OK;
+    return file_contents_cluster;
 }
 
 // endregion
@@ -587,17 +598,20 @@ static FFatResult f_init(FFat32* f)
 {
     // check partition location
     f->read(MBR, f->buffer, f->data);
-    if (f->buffer[0] == 0xfa) {  // this is a MBR
+    if (f->buffer[0] == 0xeb) {  // this is a FAT partition
+        f->reg.partition_start = 0;
+    } else {
         f->reg.partition_start = from_32(f->buffer, PARTITION_TABLE_1);
         load_sector(f, BOOT_SECTOR);
-    } else {
-        f->reg.partition_start = 0;
     }
     
     // fill out fields
-    f->reg.sectors_per_cluster = f->buffer[BPB_SECTORS_PER_CLUSTER];
     f->reg.fat_sector_start = from_16(f->buffer, BPB_RESERVED_SECTORS);
     f->reg.fat_size_sectors = from_32(f->buffer, BPB_FAT_SIZE_SECTORS);
+    
+    f->reg.sectors_per_cluster = f->buffer[BPB_SECTORS_PER_CLUSTER];
+    if (f->reg.sectors_per_cluster == 0)
+        return F_NOT_FAT_32;
     
     f->reg.number_of_fats = f->buffer[BPB_NUMBER_OF_FATS];
     f->reg.data_start_cluster = (f->reg.fat_sector_start + (f->reg.number_of_fats * f->reg.fat_size_sectors)) / f->reg.sectors_per_cluster - 2;
@@ -628,20 +642,6 @@ static FFatResult f_init(FFat32* f)
 /*********************/
 
 //region ...
-
-static FFatResult f_label(FFat32* f)
-{
-    load_sector(f, BOOT_SECTOR);
-    memcpy(f->buffer, &f->buffer[BPB_LABEL], LABEL_SZ);
-    for (int8_t i = LABEL_SZ - 1; i >= 0; --i) {
-        if (f->buffer[i] == ' ')
-            f->buffer[i] = '\0';
-        else
-            break;
-    }
-    
-    return F_OK;
-}
 
 static FFatResult f_free_r(FFat32* f)
 {
@@ -704,13 +704,16 @@ static FFatResult f_mkdir(FFat32* f, uint32_t fat_datetime)
     uint32_t parent_dir_cluster;
     
     // create file entry
-    int64_t cluster_self = 0;
+    int64_t cluster_self;
     if ((cluster_self = create_file_entry(f, (char *) f->buffer, ATTR_DIR, fat_datetime, &parent_dir_cluster)) < 0)
         return -cluster_self;
     
     // create empty directory structure ('.' and '..')
-    create_entry_in_directory(f, parent_dir_cluster, ".", ATTR_DIR, fat_datetime, cluster_self);
-    create_entry_in_directory(f, parent_dir_cluster, "..", ATTR_DIR, fat_datetime, parent_dir_cluster);
+    char filename[FILENAME_SZ]; memset(filename, ' ', FILENAME_SZ);
+    filename[0] = '.';
+    create_entry_in_directory(f, cluster_self, filename, ATTR_DIR, fat_datetime, cluster_self);
+    filename[1] = '.';
+    create_entry_in_directory(f, cluster_self, filename, ATTR_DIR, fat_datetime, parent_dir_cluster);
     
     return F_OK;
 }
@@ -753,7 +756,6 @@ FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime)
         case F_INIT:   f->reg.last_operation_result = f_init(f);   break;
         case F_FREE:   f->reg.last_operation_result = f_free(f);   break;
         case F_FREE_R: f->reg.last_operation_result = f_free_r(f); break;
-        case F_LABEL:  f->reg.last_operation_result = f_label(f);  break;
         case F_BOOT:   f->reg.last_operation_result = f_boot(f);   break;
         case F_DIR:    f->reg.last_operation_result = f_dir(f);    break;
         case F_CD:     f->reg.last_operation_result = f_cd(f);     break;

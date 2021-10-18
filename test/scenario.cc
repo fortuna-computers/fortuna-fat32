@@ -1,14 +1,18 @@
 #include "scenario.hh"
 
-#include <cmath>
-#include <iostream>
 #include <cstring>
+#include <fstream>
 
-#include "brotli/decode.h"
 #include "../src/ffat32.h"
+#include "ff/ff.h"
 
 uint8_t Scenario::image_[512 * 1024 * 1024] = { 0 };
-uint8_t Scenario::backup_[512 * 1024 * 1024] = { 0 };
+FATFS Scenario::fatfs;
+
+PARTITION VolToPart[FF_VOLUMES] = {
+        {0, 1},
+        {0, 2}
+};
 
 std::vector<Scenario> Scenario::all_scenarios()
 {
@@ -22,151 +26,172 @@ std::vector<Scenario> Scenario::all_scenarios()
     scenarios.emplace_back(i++, "Standard disk with files in root dir", 1, DiskState::FilesInRoot, 256, 4);
     
     scenarios.emplace_back(i++, "Raw image without partitions", 0, DiskState::Complete, 256, 4);
-    scenarios.emplace_back(i++, "Image with 2 partitions", 2, DiskState::Complete, 256, 4);
+    scenarios.emplace_back(i++, "Image with 2 partitions", 2, DiskState::Complete, 512, 4);
     
     scenarios.emplace_back(i++, "Disk with one sector per cluster", 1, DiskState::Complete, 64, 1);
     scenarios.emplace_back(i++, "Disk with 8 sectors per cluster", 1, DiskState::Complete, 512, 8);
     
-    scenarios.emplace_back(i++, "Standard disk with 300 files", 1, DiskState::ManyFiles, 256, 4);
+    scenarios.emplace_back(i++, "Standard disk with 300 files", 1, DiskState::Files300, 256, 4);
     
     return scenarios;
 }
 
-void Scenario::generate_disk_creators()
+void Scenario::store_image_in_disk(std::string const& filename) const
 {
-    auto scenarios = all_scenarios();
+    std::ofstream file(filename, std::ios::binary);
+    file.write(reinterpret_cast<char const*>(image_), (disk_size * 1024 * 1024));
+}
+
+void Scenario::prepare_scenario() const
+{
+    // setup globals
+    extern uint8_t* diskio_image;
+    extern uint64_t diskio_size;
     
-    std::cout << "#!/bin/sh -xe\n\n";
-    std::cout << "mkdir -p test/imghdr\n\n";
+    diskio_image = image_;
+    diskio_size = (disk_size * 1024 * 1024) / 512;
     
-    size_t i = 0;
-    for (auto const& scenario: scenarios) {
-        const std::string filename = std::to_string(i) + ".img";
-        
-        std::cout << "echo 'Generating scenario " << std::to_string(i) << "...'\n";
-        
-        // create image
-        size_t disk_size = scenario.disk_size;
-        std::cout << "dd if=/dev/zero of=" << filename << " bs=1M count=" << disk_size << " status=none && \\\n";
-        
-        // create partitions
-        std::string device_name = filename;
-        
-        if (scenario.partitions != 0) {
-            switch (scenario.partitions) {
-                case 1:
-                    std::cout << "    parted -a optimal " << filename << " mktable msdos mkpart primary fat32 1 '100%' && \\\n";
-                    break;
-                case 2:
-                    std::cout << "    parted -a optimal " + filename + " mktable msdos mkpart primary fat32 1 '50%' mkpart primary fat32 '50%' '100%' && \\\n";
-                    break;
-            }
-        
-            device_name = "/dev/mapper/loop0p1";
-    
-            // create loopback devices
-            std::cout << "    kpartx -av " << filename << " && \\\n";
-        }
-            
-        // format partition
-        std::cout << "    mkfs.fat -F 32 -n FORTUNA -s " << scenario.sectors_per_cluster << " " << device_name << " > /dev/null && \\\n";
-        
-        if (scenario.disk_state != DiskState::Empty) {
-            // mount partition
-            std::cout << "    mount -o sync,mand,loud " << device_name << " mnt && \\\n";
-            
-            // copy files
-            std::string origin;
-            switch (scenario.disk_state) {
-                case DiskState::FilesInRoot: origin = "rootdir"; break;
-                case DiskState::Complete:    origin = "multidir"; break;
-                case DiskState::ManyFiles:   origin = "manyfiles"; break;
-                case DiskState::Empty:       abort();
-            }
-            
-            std::cout << "    cp -R test/" << origin << "/* mnt/ && \\\n";
-            std::cout << "    sync mnt && \\\n";
-            
-            // dismount partition
-            std::cout << "    umount -f mnt && \\\n";
-        }
-    
-        if (scenario.partitions != 0) {
-            // remove loopback devices
-            std::cout << "    sleep 0.1 && \\\n";
-            std::cout << "    kpartx -d " << filename << " && \\\n";
-            std::cout << "    losetup && \\\n";
-        }
-        
-        // compress image file
-        std::cout << "    brotli -j1 " << filename << " && \\\n";
-        
-        // C-ify image file
-        // std::cout << "    xxd -i " << filename << ".br > test/imghdr/" << i << ".h && \\\n";
-        // std::cout << "    sed -i '1s/^/static const /' test/imghdr/" << i << ".h && \\\n";
-        // std::cout << "    echo '\nstatic const size_t __" << i << "_original = " << disk_size * 1024 * 1024 << ";' >> test/imghdr/" << i << ".h && \\\n";
-        
-        // remove image file
-        // std::cout << "    rm " << filename << " " << filename << ".br && \\\n";
-        std::cout << "    mv " << filename << ".br test/imghdr/ && \\\n";
-        std::cout << "    sync .\n";
-        
-        std::cout << "\n\n";
-        ++i;
+    // prepare image
+    // clear_disk();
+    partition_disk();
+    format_disk();
+    switch (disk_state) {
+        case DiskState::Empty:
+            break;
+        case DiskState::FilesInRoot:
+            add_files_in_root();
+            break;
+        case DiskState::Complete:
+            add_complete_files();
+            break;
+        case DiskState::Files300:
+            add_many_files(300);
+            break;
+        case DiskState::Files512:
+            add_many_files(512);
+            break;
     }
 }
 
-void Scenario::decompress_image() const
+void Scenario::end_scenario() const
 {
-    size_t file_size;
-    uint8_t const* compressed_data = link_to_compressed(&file_size);
-    
-    size_t decoded_size = sizeof image_;
-    
-    BrotliDecoderState* state = BrotliDecoderCreateInstance(nullptr, nullptr, nullptr);
-    if (BrotliDecoderDecompress(file_size, compressed_data, &decoded_size, image_) != BROTLI_DECODER_RESULT_SUCCESS)
-        abort();
-    BrotliDecoderDestroyInstance(state);
+    R(f_mount(nullptr, "", 0));
 }
 
-uint8_t const* Scenario::link_to_compressed(size_t* file_size) const
+void Scenario::remount() const
 {
-    extern uint8_t _binary_test_imghdr_0_img_br_start[];
-    extern uint8_t _binary_test_imghdr_0_img_br_size;
-    extern uint8_t _binary_test_imghdr_1_img_br_start[];
-    extern uint8_t _binary_test_imghdr_1_img_br_size;
-    extern uint8_t _binary_test_imghdr_2_img_br_start[];
-    extern uint8_t _binary_test_imghdr_2_img_br_size;
-    extern uint8_t _binary_test_imghdr_3_img_br_start[];
-    extern uint8_t _binary_test_imghdr_3_img_br_size;
-    extern uint8_t _binary_test_imghdr_4_img_br_start[];
-    extern uint8_t _binary_test_imghdr_4_img_br_size;
-    extern uint8_t _binary_test_imghdr_5_img_br_start[];
-    extern uint8_t _binary_test_imghdr_5_img_br_size;
-    extern uint8_t _binary_test_imghdr_6_img_br_start[];
-    extern uint8_t _binary_test_imghdr_6_img_br_size;
-    extern uint8_t _binary_test_imghdr_7_img_br_start[];
-    extern uint8_t _binary_test_imghdr_7_img_br_size;
+    R(f_mount(nullptr, "", 0));
     
-    switch (number) {
-        case 0: *file_size = (size_t) &_binary_test_imghdr_0_img_br_size; return _binary_test_imghdr_0_img_br_start;
-        case 1: *file_size = (size_t) &_binary_test_imghdr_1_img_br_size; return _binary_test_imghdr_1_img_br_start;
-        case 2: *file_size = (size_t) &_binary_test_imghdr_2_img_br_size; return _binary_test_imghdr_2_img_br_start;
-        case 3: *file_size = (size_t) &_binary_test_imghdr_3_img_br_size; return _binary_test_imghdr_3_img_br_start;
-        case 4: *file_size = (size_t) &_binary_test_imghdr_4_img_br_size; return _binary_test_imghdr_4_img_br_start;
-        case 5: *file_size = (size_t) &_binary_test_imghdr_5_img_br_size; return _binary_test_imghdr_5_img_br_start;
-        case 6: *file_size = (size_t) &_binary_test_imghdr_6_img_br_size; return _binary_test_imghdr_6_img_br_start;
-        case 7: *file_size = (size_t) &_binary_test_imghdr_7_img_br_size; return _binary_test_imghdr_7_img_br_start;
-        default: abort();
+    memset(&fatfs, 0, sizeof(FATFS));
+    R(f_mount(&fatfs, "", 0));
+}
+
+void Scenario::clear_disk() const {
+    memset(image_, 0, sizeof image_);
+}
+
+void Scenario::format_disk() const
+{
+    BYTE work[FF_MAX_SS];
+    
+    MKFS_PARM mkfs_parm = {
+            .fmt = FM_FAT32,
+            .n_fat = 2,
+            .align = 1,
+            .n_root = 0,
+            .au_size = sectors_per_cluster * 512U,
+    };
+    R(f_mkfs("", &mkfs_parm, work, sizeof work));
+    
+    memset(&fatfs, 0, sizeof(FATFS));
+    R(f_mount(&fatfs, "", 0));
+    
+    R(f_setlabel("FORTUNA"));
+}
+
+void Scenario::partition_disk() const
+{
+    BYTE work[FF_MAX_SS];
+    
+    if (partitions == 1) {
+        LBA_t lba[] = { 100, 0 };
+        R(f_fdisk(0, lba, work));
+    } else if (partitions == 2) {
+        LBA_t lba[] = { 50, 50, 0 };
+        R(f_fdisk(0, lba, work));
     }
 }
 
-void Scenario::backup_image()
+void Scenario::add_files_in_root() const
 {
-    memcpy(backup_, image_, sizeof image_);
+    extern uint8_t _binary_test_TAGS_TXT_start[];
+    extern uint8_t _binary_test_TAGS_TXT_size;
+    
+    FIL fp;
+    UINT bw;
+    
+    R(f_open(&fp, "HELLO.TXT", FA_CREATE_NEW | FA_WRITE));
+    const char* contents = "Hello world!";
+    R(f_write(&fp, contents, strlen(contents), &bw));
+    R(f_close(&fp));
+    
+    R(f_open(&fp, "TAGS.TXT", FA_CREATE_NEW | FA_WRITE));
+    R(f_write(&fp, _binary_test_TAGS_TXT_start, (size_t) &_binary_test_TAGS_TXT_size, &bw));
+    R(f_close(&fp));
 }
 
-void Scenario::restore_image_backup()
+void Scenario::add_complete_files() const
 {
-    memcpy(image_, backup_, sizeof image_);
+    extern uint8_t _binary_test_TAGS_TXT_start[];
+    extern uint8_t _binary_test_TAGS_TXT_end[];
+    
+    FIL fp;
+    UINT bw;
+    
+    R(f_mkdir("HELLO"));
+    R(f_mkdir("HELLO/FORTUNA"));   // empty dir
+    R(f_mkdir("HELLO/WORLD"));
+    
+    R(f_open(&fp, "FORTUNA.DAT", FA_CREATE_NEW | FA_WRITE));
+    const char* contents = "Hello world!";
+    R(f_write(&fp, contents, strlen(contents), &bw));
+    R(f_close(&fp));
+    
+    R(f_open(&fp, "TAGS.TXT", FA_CREATE_NEW | FA_WRITE));
+    R(f_write(&fp, _binary_test_TAGS_TXT_start, _binary_test_TAGS_TXT_end - _binary_test_TAGS_TXT_start, &bw));
+    R(f_close(&fp));
+    
+    R(f_open(&fp, "HELLO/WORLD/HELLO.TXT", FA_CREATE_NEW | FA_WRITE));
+    contents = "Hello world!";
+    R(f_write(&fp, contents, strlen(contents), &bw));
+    R(f_close(&fp));
+}
+
+void Scenario::add_many_files(size_t count) const
+{
+    FIL fp;
+    UINT bw;
+    
+    for (size_t i = 1; i <= count; ++i) {
+        char filename[12];
+        sprintf(filename, "FILE%03zu.BIN", i);
+        R(f_open(&fp, filename, FA_CREATE_NEW | FA_WRITE));
+        const char* contents = "File contents";
+        R(f_write(&fp, contents, strlen(contents), &bw));
+        R(f_close(&fp));
+    }
+}
+
+void Scenario::R(FRESULT fresult) const
+{
+    if (fresult != FR_OK)
+        throw std::runtime_error("FatFS operation failed");
+}
+
+DWORD Scenario::get_free_space() const
+{
+    DWORD found;
+    FATFS* f = &fatfs;
+    R(f_getfree("", &found, &f));
+    return found;
 }
