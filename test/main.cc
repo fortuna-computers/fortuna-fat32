@@ -13,10 +13,6 @@
 #define RED "\e[0;31m"
 #define RST "\e[0m"
 
-extern "C" {
-    extern uint8_t* diskio_image;
-}
-
 extern std::vector<Test> prepare_tests();
 
 static void print_test_descriptions(std::vector<Test> const& tests)
@@ -42,14 +38,9 @@ static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, 
 {
     std::cout << std::left << std::setw(43) << scenario.name;
     
-    scenario.decompress_image();
-    Scenario::backup_image();
-    
-    size_t i = 0;
     for (Test const& test: tests) {
-        if (i++ > 0)
-            Scenario::restore_image_backup();
-        diskio_image = Scenario::image();
+    
+        scenario.prepare_scenario();
         
         FFatResult r = f_fat32(ffat, F_INIT, 0);
         if (r != F_OK) {
@@ -57,11 +48,9 @@ static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, 
             exit(EXIT_FAILURE);
         }
         
-        FATFS fatfs;
-        f_mount(&fatfs, "", 0);
-        
         test.execute(ffat, scenario);
-        if (test.verify(buffer, scenario, &fatfs)) {
+        scenario.remount();
+        if (test.verify(buffer, scenario)) {
             std::cout << GRN "\u2713" RST;
         } else {
             std::cout << RED "X" RST;
@@ -69,20 +58,15 @@ static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, 
         }
         std::cout.flush();
     
-        f_mount(nullptr, "", 0);
+        scenario.end_scenario();
     }
     
     std::cout << "\n";
 }
 
 
-int main(int argc, char* argv[])
+int main()
 {
-    if (argc == 2 && std::string(argv[1]) == "-g") {
-        Scenario::generate_disk_creators();
-        return EXIT_SUCCESS;
-    }
-    
     uint8_t buffer[512];
     
     FFat32 ffat {
@@ -103,6 +87,7 @@ int main(int argc, char* argv[])
     print_test_descriptions(tests);
     print_headers(tests);
     
+    // Scenario::all_scenarios().at(0).store_image_in_disk("/tmp/0.img");
     for (Scenario const& scenario: Scenario::all_scenarios())
         run_tests(scenario, tests, &ffat, buffer);
     // run_tests(Scenario::all_scenarios().at(7), tests, &ffat, buffer);
