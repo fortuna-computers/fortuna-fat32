@@ -234,7 +234,7 @@ std::vector<Test> prepare_tests()
                         files = { "HELLO", "FORTUNA.DAT", "TAGS.TXT" };
                         break;
                     case Scenario::DiskState::Files300:
-                    case Scenario::DiskState::Files512:
+                    case Scenario::DiskState::Files64:
                         for (size_t i = 1; i < 10; ++i) {
                             char buf[16];
                             sprintf(buf, "FILE%03zu.BIN", i);

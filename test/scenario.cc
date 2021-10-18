@@ -3,7 +3,6 @@
 #include <cstring>
 #include <fstream>
 
-#include "../src/ffat32.h"
 #include "ff/ff.h"
 
 uint8_t Scenario::image_[512 * 1024 * 1024] = { 0 };
@@ -29,8 +28,8 @@ std::vector<Scenario> Scenario::all_scenarios()
     scenarios.emplace_back("Disk with one sector per cluster", 1, DiskState::Complete, 64, 1);
     scenarios.emplace_back("Disk with 8 sectors per cluster", 1, DiskState::Complete, 512, 8);
     
+    scenarios.emplace_back("Standard disk with 64 files in root", 1, DiskState::Files64, 256, 4);
     scenarios.emplace_back("Standard disk with 300 files in root", 1, DiskState::Files300, 256, 4);
-    scenarios.emplace_back("Standard disk with 512 files in root", 1, DiskState::Files512, 256, 4);
     
     return scenarios;
 }
@@ -66,8 +65,8 @@ void Scenario::prepare_scenario() const
         case DiskState::Files300:
             add_many_files(300);
             break;
-        case DiskState::Files512:
-            add_many_files(512);
+        case DiskState::Files64:
+            add_many_files(63);   // +1 disk label
             break;
     }
 }
