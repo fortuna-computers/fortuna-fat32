@@ -89,165 +89,165 @@ std::vector<Test> prepare_tests()
     
     tests.emplace_back(
             "Check directories",
-        
+
             [&](FFat32* ffat, Scenario const&) {
-                                            directory.clear();
-                                            FFatResult r;
-                                            ffat->buffer[0] = F_START_OVER;
-                                            do {
-                                            r = f_fat32(ffat, F_DIR, 0);
-                                            if (r != F_OK && r != F_MORE_DATA)
-                                            throw std::runtime_error("F_DIR reported error " + std::to_string(r));
-                                            add_files_to_dir_structure(ffat->buffer, directory);
-                                            ffat->buffer[0] = F_CONTINUE;
-                                            } while (r == F_MORE_DATA);
-                                            },
-            
+                directory.clear();
+                FFatResult r;
+                ffat->buffer[0] = F_START_OVER;
+                do {
+                    r = f_fat32(ffat, F_DIR, 0);
+                    if (r != F_OK && r != F_MORE_DATA)
+                        throw std::runtime_error("F_DIR reported error " + std::to_string(r));
+                    add_files_to_dir_structure(ffat->buffer, directory);
+                    ffat->buffer[0] = F_CONTINUE;
+                } while (r == F_MORE_DATA);
+            },
+
             [&](uint8_t const*, Scenario const&) {
-                                              DIR dp;
-                                              FILINFO filinfo;
-                                              if (f_opendir(&dp, "/") != FR_OK)
-                                              throw std::runtime_error("`f_opendir` reported error");
-                                              
-                                              for (;;) {
-                                              if (f_readdir(&dp, &filinfo)  != FR_OK)
-                                              throw std::runtime_error("`f_readdir` reported error");
-                                              
-                                              if (filinfo.fname[0] == '\0')
-                                              break;
-                                              
-                                              if (!find_file_in_directory(&filinfo, directory))
-                                              return false;
-                                              }
-                                              
-                                              if (f_closedir(&dp) != FR_OK)
-                                              throw std::runtime_error("`f_opendir` reported error");
-                                              
-                                              return true;
-                                              }
+                DIR dp;
+                FILINFO filinfo;
+                if (f_opendir(&dp, "/") != FR_OK)
+                    throw std::runtime_error("`f_opendir` reported error");
+    
+                for (;;) {
+                    if (f_readdir(&dp, &filinfo)  != FR_OK)
+                        throw std::runtime_error("`f_readdir` reported error");
+        
+                    if (filinfo.fname[0] == '\0')
+                        break;
+        
+                    if (!find_file_in_directory(&filinfo, directory))
+                        return false;
+                }
+    
+                if (f_closedir(&dp) != FR_OK)
+                    throw std::runtime_error("`f_opendir` reported error");
+    
+                return true;
+            }
     );
     
     tests.emplace_back(
             "Cd to directory (relative path)",
-
+            
             [&](FFat32* ffat, Scenario const&) {
-                                            strcpy(reinterpret_cast<char*>(ffat->buffer), "HELLO");
-                                            result = f_fat32(ffat, F_CD, 0);
-                                            ffat->buffer[0] = F_START_OVER;
-                                            f_fat32(ffat, F_DIR, 0);
-                                            },
-
+                strcpy(reinterpret_cast<char*>(ffat->buffer), "HELLO");
+                result = f_fat32(ffat, F_CD, 0);
+                ffat->buffer[0] = F_START_OVER;
+                f_fat32(ffat, F_DIR, 0);
+            },
+            
             [&](uint8_t const* buffer, Scenario const& scenario) {
-                                                              if (scenario.disk_state == Scenario::DiskState::Complete) {
-                                                              if (result != F_OK)
-                                                              return false;
-                                                              
-                                                              if (!check_for_files_in_directory(buffer, directory, { "FORTUNA", "WORLD" }))
-                                                              return false;
-                                                              
-                                                              return true;
-                                                              
-                                                              } else {
-                                                              return result == F_INEXISTENT_FILE_OR_DIR;
-                                                              }
-                                                              }
+                if (scenario.disk_state == Scenario::DiskState::Complete) {
+                    if (result != F_OK)
+                        return false;
+                    
+                    if (!check_for_files_in_directory(buffer, directory, { "FORTUNA", "WORLD" }))
+                        return false;
+                    
+                    return true;
+                    
+                } else {
+                    return result == F_INEXISTENT_FILE_OR_DIR;
+                }
+            }
     );
 
     tests.emplace_back(
             "Cd to directory (relative path with slash at the end)",
-        
-            [&](FFat32* ffat, Scenario const&) {
-                                            strcpy(reinterpret_cast<char*>(ffat->buffer), "HELLO/");
-                                            result = f_fat32(ffat, F_CD, 0);
-                                            ffat->buffer[0] = F_START_OVER;
-                                            f_fat32(ffat, F_DIR, 0);
-                                            },
-        
-            [&](uint8_t const* buffer, Scenario const& scenario) {
-                                                              if (scenario.disk_state == Scenario::DiskState::Complete) {
-                                                              if (result != F_OK)
-                                                              return false;
-                                                              
-                                                              if (!check_for_files_in_directory(buffer, directory, { "FORTUNA", "WORLD" }))
-                                                              return false;
-                                                              
-                                                              return true;
-                                                              
-                                                              } else {
-                                                              return result == F_INEXISTENT_FILE_OR_DIR;
-                                                              }
-                                                              }
-    );
 
+            [&](FFat32* ffat, Scenario const&) {
+                strcpy(reinterpret_cast<char*>(ffat->buffer), "HELLO/");
+                result = f_fat32(ffat, F_CD, 0);
+                ffat->buffer[0] = F_START_OVER;
+                f_fat32(ffat, F_DIR, 0);
+            },
+
+            [&](uint8_t const* buffer, Scenario const& scenario) {
+                if (scenario.disk_state == Scenario::DiskState::Complete) {
+                    if (result != F_OK)
+                        return false;
+        
+                    if (!check_for_files_in_directory(buffer, directory, { "FORTUNA", "WORLD" }))
+                        return false;
+        
+                    return true;
+        
+                } else {
+                    return result == F_INEXISTENT_FILE_OR_DIR;
+                }
+            }
+    );
+    
     tests.emplace_back(
             "Cd to directory (absolute path)",
-        
+            
             [&](FFat32* ffat, Scenario const& scenario) {
-                                                     strcpy(reinterpret_cast<char*>(ffat->buffer), "HELLO");
-                                                     result = f_fat32(ffat, F_CD, 0);
-                                                     if (scenario.disk_state == Scenario::DiskState::Complete && result != F_OK)
-                                                     throw std::runtime_error("Unexpected result.");
-                                                     strcpy(reinterpret_cast<char*>(ffat->buffer), "/HELLO/WORLD");
-                                                     result = f_fat32(ffat, F_CD, 0);
-                                                     ffat->buffer[0] = F_START_OVER;
-                                                     f_fat32(ffat, F_DIR, 0);
-                                                     },
-        
+                strcpy(reinterpret_cast<char*>(ffat->buffer), "HELLO");
+                result = f_fat32(ffat, F_CD, 0);
+                if (scenario.disk_state == Scenario::DiskState::Complete && result != F_OK)
+                    throw std::runtime_error("Unexpected result.");
+                strcpy(reinterpret_cast<char*>(ffat->buffer), "/HELLO/WORLD");
+                result = f_fat32(ffat, F_CD, 0);
+                ffat->buffer[0] = F_START_OVER;
+                f_fat32(ffat, F_DIR, 0);
+            },
+            
             [&](uint8_t const* buffer, Scenario const& scenario) {
-                                                              if (scenario.disk_state == Scenario::DiskState::Complete) {
-                                                              if (result != F_OK)
-                                                              return false;
-                                                              
-                                                              if (!check_for_files_in_directory(buffer, directory, { "HELLO.TXT" }))
-                                                              return false;
-                                                              
-                                                              return true;
-                                                              
-                                                              } else {
-                                                              return result == F_INEXISTENT_FILE_OR_DIR;
-                                                              }
-                                                              }
+                if (scenario.disk_state == Scenario::DiskState::Complete) {
+                    if (result != F_OK)
+                        return false;
+                    
+                    if (!check_for_files_in_directory(buffer, directory, { "HELLO.TXT" }))
+                        return false;
+                    
+                    return true;
+                    
+                } else {
+                    return result == F_INEXISTENT_FILE_OR_DIR;
+                }
+            }
     );
-
+    
     tests.emplace_back(
             "Cd to root ('/') and dir",
-        
+            
             [&](FFat32* ffat, Scenario const&) {
-                                            strcpy(reinterpret_cast<char*>(ffat->buffer), "/");
-                                            result = f_fat32(ffat, F_CD, 0);
-                                            ffat->buffer[0] = F_START_OVER;
-                                            f_fat32(ffat, F_DIR, 0);
-                                            },
-        
+                strcpy(reinterpret_cast<char*>(ffat->buffer), "/");
+                result = f_fat32(ffat, F_CD, 0);
+                ffat->buffer[0] = F_START_OVER;
+                f_fat32(ffat, F_DIR, 0);
+            },
+            
             [&](uint8_t const* buffer, Scenario const& scenario) {
-                                                              if (result != F_OK)
-                                                              return false;
-                                                              
-                                                              std::vector<std::string> files;
-                                                              switch (scenario.disk_state) {
-                                                              case Scenario::DiskState::Empty:
-                                                              return true;
-                                                              case Scenario::DiskState::FilesInRoot:
-                                                              files = { "HELLO.TXT", "TAGS.TXT" };
-                                                              break;
-                                                              case Scenario::DiskState::Complete:
-                                                              files = { "HELLO", "FORTUNA.DAT", "TAGS.TXT" };
-                                                              break;
-                                                              case Scenario::DiskState::Files300:
-                                                              case Scenario::DiskState::Files512:
-                                                              for (size_t i = 1; i < 10; ++i) {
-                                                              char buf[16];
-                                                              sprintf(buf, "FILE%03zu.BIN", i);
-                                                              files.emplace_back(buf);
-                                                              }
-                                                              break;
-                                                              }
-                                                              
-                                                              if (!check_for_files_in_directory(buffer, directory, files))
-                                                              return false;
-                                                              
-                                                              return true;
-                                                              }
+                if (result != F_OK)
+                    return false;
+                
+                std::vector<std::string> files;
+                switch (scenario.disk_state) {
+                    case Scenario::DiskState::Empty:
+                        return true;
+                    case Scenario::DiskState::FilesInRoot:
+                        files = { "HELLO.TXT", "TAGS.TXT" };
+                        break;
+                    case Scenario::DiskState::Complete:
+                        files = { "HELLO", "FORTUNA.DAT", "TAGS.TXT" };
+                        break;
+                    case Scenario::DiskState::Files300:
+                    case Scenario::DiskState::Files512:
+                        for (size_t i = 1; i < 10; ++i) {
+                            char buf[16];
+                            sprintf(buf, "FILE%03zu.BIN", i);
+                            files.emplace_back(buf);
+                        }
+                        break;
+                }
+                
+                if (!check_for_files_in_directory(buffer, directory, files))
+                    return false;
+                
+                return true;
+            }
     );
     
     tests.emplace_back(
