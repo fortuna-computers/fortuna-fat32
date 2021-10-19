@@ -4,7 +4,6 @@ int main()
 {
     FFat32 f;
     f_fat32(&f, F_INIT, 0);
-    f_fat32(&f, F_LABEL, 0);
     f_fat32(&f, F_FREE, 0);
     f_fat32(&f, F_FREE_R, 0);
     f_fat32(&f, F_CD, 0);

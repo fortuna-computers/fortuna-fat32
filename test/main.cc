@@ -86,10 +86,8 @@ int main()
     print_test_descriptions(tests);
     print_headers(tests);
     
-    // Scenario::all_scenarios().at(0).store_image_in_disk("/tmp/0.img");
     auto scenarios = Scenario::all_scenarios();
     for (Scenario const& scenario: scenarios)
         run_tests(scenario, tests, &ffat, buffer);
-    // run_tests(Scenario::all_scenarios().at(7), tests, &ffat, buffer);
 }
 

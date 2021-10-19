@@ -52,14 +52,14 @@ std::vector<Test> prepare_tests()
         tests.emplace_back(
                 "Check disk space (calculate + read)",
 
-                [&](FFat32* ffat, Scenario const& scenario) {
+                [&](FFat32* ffat, Scenario const&) {
                     f_fat32(ffat, F_FREE_R, 0);
                     free_1st_check = *(uint32_t *) ffat->buffer;
                     f_fat32(ffat, F_FREE, 0);
                     free_2nd_check = *(uint32_t *) ffat->buffer;
                 },
                 
-                [&](uint8_t const*, Scenario const& scenario) {
+                [&](uint8_t const*, Scenario const&) {
                     return free_1st_check == free_2nd_check;
                 }
         );
@@ -253,9 +253,10 @@ std::vector<Test> prepare_tests()
     tests.emplace_back(
             "Create dir at root",
 
-            [&](FFat32* f, Scenario const&) {
+            [&](FFat32* f, Scenario const& scenario) {
                 strcpy((char *) f->buffer, "TEST");
                 result = f_fat32(f, F_MKDIR, 1981);
+                scenario.store_image_in_disk("/tmp/0.img");
             },
 
             [&](uint8_t const*, Scenario const&) {
