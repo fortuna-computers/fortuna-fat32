@@ -8,13 +8,12 @@
 
 class Scenario {
 public:
-    enum class DiskState { Empty, FilesInRoot, Complete, Files300, Files512 };
+    enum class DiskState { Empty, FilesInRoot, Complete, Files300, Files64 };
     
-    Scenario(uint8_t number, std::string const& name, uint8_t partitions, DiskState disk_state, uint16_t disk_size, uint16_t sectors_per_cluster)
-             : number(number), name(name), partitions(partitions), disk_state(disk_state), disk_size(disk_size),
+    Scenario(std::string const& name, uint8_t partitions, DiskState disk_state, uint16_t disk_size, uint16_t sectors_per_cluster)
+             : name(name), partitions(partitions), disk_state(disk_state), disk_size(disk_size),
                sectors_per_cluster(sectors_per_cluster) {}
                
-    const uint8_t     number;
     const std::string name;
     const uint8_t     partitions;
     const DiskState   disk_state;
@@ -35,10 +34,6 @@ public:
     DWORD get_free_space() const;
 
 private:
-    static constexpr uint8_t   v_partitions[] = { 0, 1, 2 };
-    static constexpr DiskState v_disk_states[] = { DiskState::Empty, DiskState::FilesInRoot, DiskState::Complete };
-    static constexpr uint16_t  v_disk_size[] = { 64, 256, 1024 };
-    static constexpr uint8_t   v_sectors_per_cluster[] = { 1, 8, 32 };
     static FATFS fatfs;
     
     static uint8_t image_[512 * 1024 * 1024];

@@ -14,6 +14,7 @@
 #define RST "\e[0m"
 
 extern std::vector<Test> prepare_tests();
+uint8_t buffer[512];
 
 static void print_test_descriptions(std::vector<Test> const& tests)
 {
@@ -67,8 +68,6 @@ static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, 
 
 int main()
 {
-    uint8_t buffer[512];
-    
     FFat32 ffat {
         .buffer = buffer,
         .data = Scenario::image(),
@@ -87,9 +86,8 @@ int main()
     print_test_descriptions(tests);
     print_headers(tests);
     
-    // Scenario::all_scenarios().at(0).store_image_in_disk("/tmp/0.img");
-    for (Scenario const& scenario: Scenario::all_scenarios())
+    auto scenarios = Scenario::all_scenarios();
+    for (Scenario const& scenario: scenarios)
         run_tests(scenario, tests, &ffat, buffer);
-    // run_tests(Scenario::all_scenarios().at(7), tests, &ffat, buffer);
 }
 
