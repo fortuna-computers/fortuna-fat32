@@ -101,6 +101,12 @@ static void to_32(uint8_t* buffer, uint16_t pos, uint32_t value)
 static void load_sector(FFat32* f, uint32_t sector)
 {
     sector += f->reg.partition_start;
+    /*
+    if (f->reg.data_start_cluster != 0 && sector >= (f->reg.data_start_cluster * f->reg.sectors_per_cluster)) {
+        sector /= 0x1ff;
+        sector *= 0x200;
+    }
+    */
     f->read(sector, f->buffer, f->data);
 }
 
@@ -111,7 +117,14 @@ static void load_cluster(FFat32* f, uint32_t cluster, uint16_t sector)
 
 static void write_sector(FFat32* f, uint32_t sector)
 {
-    f->write(sector + f->reg.partition_start, f->buffer, f->data);
+    sector += f->reg.partition_start;
+    /*
+    if (f->reg.data_start_cluster != 0 && sector >= (f->reg.data_start_cluster * f->reg.sectors_per_cluster)) {
+        sector /= 0x1ff;
+        sector *= 0x200;
+    }
+    */
+    f->write(sector, f->buffer, f->data);
 }
 
 static void write_cluster(FFat32* f, uint32_t cluster, uint16_t sector)
@@ -816,3 +829,5 @@ FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime)
     }
     return f->reg.last_operation_result;
 }
+
+// http://elm-chan.org/docs/fat_e.html
