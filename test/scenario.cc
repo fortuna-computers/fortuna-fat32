@@ -17,20 +17,23 @@ std::vector<Scenario> Scenario::all_scenarios()
 {
     std::vector<Scenario> scenarios;
     
-    scenarios.emplace_back("Standard disk with directories and files", 1, DiskState::Complete, 256, 4);
+    /*
+    scenarios.emplace_back("Standard disk with directories and files");
     
-    scenarios.emplace_back("Standard empty disk", 1, DiskState::Empty, 256, 4);
-    scenarios.emplace_back("Standard disk with files in root dir", 1, DiskState::FilesInRoot, 256, 4);
+    scenarios.emplace_back("Standard empty disk", 1, DiskState::Empty);
+    scenarios.emplace_back("Standard disk with files in root dir", 1, DiskState::FilesInRoot);
     
-    scenarios.emplace_back("Raw image without partitions", 0, DiskState::Complete, 256, 4);
-    scenarios.emplace_back("Image with 2 partitions", 2, DiskState::Complete, 512, 4);
+    scenarios.emplace_back("Raw image without partitions", 0);
+    scenarios.emplace_back("Image with 2 partitions", 2, DiskState::Complete, 512);
     
     scenarios.emplace_back("Disk with one sector per cluster", 1, DiskState::Complete, 64, 1);
     scenarios.emplace_back("Disk with 8 sectors per cluster", 1, DiskState::Complete, 512, 8);
     
-    scenarios.emplace_back("Standard disk with 64 files in root", 1, DiskState::Files64, 256, 4);
+    scenarios.emplace_back("Standard disk with 64 files in root", 1, DiskState::Files64);
+    scenarios.emplace_back("Standard disk with 300 files in root", 1, DiskState::Files300);
+     */
     
-    scenarios.emplace_back("Standard disk with 300 files in root", 1, DiskState::Files300, 256, 4);
+    scenarios.emplace_back("Disk with 512 bytes alignment", 1, DiskState::Complete, 256, 4, 512);
     
     return scenarios;
 }
@@ -51,7 +54,7 @@ void Scenario::prepare_scenario() const
     diskio_size = (disk_size * 1024 * 1024) / 512;
     
     // prepare image
-    // clear_disk();
+    clear_disk();
     partition_disk();
     format_disk();
     switch (disk_state) {
@@ -96,7 +99,7 @@ void Scenario::format_disk() const
     MKFS_PARM mkfs_parm = {
             .fmt = FM_FAT32,
             .n_fat = 2,
-            .align = 1,
+            .align = alignment,
             .n_root = 0,
             .au_size = sectors_per_cluster * 512U,
     };

@@ -23,7 +23,7 @@ std::vector<Test> prepare_tests()
     tests.emplace_back(
             "Check disk space (pre-existing)",
             
-            [](FFat32* ffat, Scenario const&) {
+            [](FFat32* ffat, Scenario const& scenario) {
                 f_fat32(ffat, F_FREE, 0);
             },
             

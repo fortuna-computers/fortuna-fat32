@@ -100,7 +100,8 @@ static void to_32(uint8_t* buffer, uint16_t pos, uint32_t value)
 
 static void load_sector(FFat32* f, uint32_t sector)
 {
-    f->read(sector + f->reg.partition_start, f->buffer, f->data);
+    sector += f->reg.partition_start;
+    f->read(sector, f->buffer, f->data);
 }
 
 static void load_cluster(FFat32* f, uint32_t cluster, uint16_t sector)
@@ -659,7 +660,7 @@ static FFatResult f_init(FFat32* f)
     f->reg.data_start_cluster = (f->reg.fat_sector_start + (f->reg.number_of_fats * f->reg.fat_size_sectors)) / f->reg.sectors_per_cluster - 2;
     
     // check if bytes per sector is correct
-   uint16_t bytes_per_sector = from_16(f->buffer, BPB_BYTES_PER_SECTOR);
+    uint16_t bytes_per_sector = from_16(f->buffer, BPB_BYTES_PER_SECTOR);
     if (bytes_per_sector != BYTES_PER_SECTOR)
         return F_BYTES_PER_SECTOR_NOT_512;
     

@@ -10,17 +10,19 @@ class Scenario {
 public:
     enum class DiskState { Empty, FilesInRoot, Complete, Files300, Files64 };
     
-    Scenario(std::string const& name, uint8_t partitions, DiskState disk_state, uint16_t disk_size, uint16_t sectors_per_cluster)
+    explicit Scenario(std::string const& name, uint8_t partitions=1, DiskState disk_state=DiskState::Complete, uint16_t disk_size=256,
+             uint16_t sectors_per_cluster=4, uint16_t alignment=1)
              : name(name), partitions(partitions), disk_state(disk_state), disk_size(disk_size),
-               sectors_per_cluster(sectors_per_cluster) {}
+               sectors_per_cluster(sectors_per_cluster), alignment(alignment) {}
                
+    static std::vector<Scenario> all_scenarios();
+    
     const std::string name;
     const uint8_t     partitions;
     const DiskState   disk_state;
     const uint16_t    disk_size;
     const uint16_t    sectors_per_cluster;
-    
-    static std::vector<Scenario> all_scenarios();
+    const uint16_t    alignment;
     
     static uint8_t* image() { return image_; }
     

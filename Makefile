@@ -14,6 +14,10 @@ ftest: ${FORTUNA_FAT32} ${TEST_OBJ}
 	g++ $^ -o $@ `pkg-config --libs libbrotlicommon libbrotlidec`
 .PHONY: ftest
 
+test: ftest
+	./ftest
+.PHONY: ftest
+
 test/tags.o: test/TAGS.TXT
 	objcopy --input binary --output pe-x86-64 --binary-architecture i386:x86-64 $^ $@
 
