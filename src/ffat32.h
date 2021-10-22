@@ -57,7 +57,7 @@ typedef struct {
     uint32_t   partition_start;
     uint32_t   fat_sector_start;
     uint32_t   fat_size_sectors;
-    uint32_t   data_start_cluster;
+    uint32_t   data_start_sector;
     uint32_t   root_dir_cluster;
     uint32_t   current_dir_cluster;
     

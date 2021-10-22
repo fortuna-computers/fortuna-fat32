@@ -101,35 +101,23 @@ static void to_32(uint8_t* buffer, uint16_t pos, uint32_t value)
 static void load_sector(FFat32* f, uint32_t sector)
 {
     sector += f->reg.partition_start;
-    /*
-    if (f->reg.data_start_cluster != 0 && sector >= (f->reg.data_start_cluster * f->reg.sectors_per_cluster)) {
-        sector /= 0x1ff;
-        sector *= 0x200;
-    }
-    */
     f->read(sector, f->buffer, f->data);
 }
 
-static void load_cluster(FFat32* f, uint32_t cluster, uint16_t sector)
+static void load_data_cluster(FFat32* f, uint32_t cluster, uint16_t sector)
 {
-    load_sector(f, cluster * f->reg.sectors_per_cluster + sector);
+    load_sector(f, (cluster - 2) * f->reg.sectors_per_cluster + f->reg.data_start_sector + sector - f->reg.partition_start);
 }
 
 static void write_sector(FFat32* f, uint32_t sector)
 {
     sector += f->reg.partition_start;
-    /*
-    if (f->reg.data_start_cluster != 0 && sector >= (f->reg.data_start_cluster * f->reg.sectors_per_cluster)) {
-        sector /= 0x1ff;
-        sector *= 0x200;
-    }
-    */
     f->write(sector, f->buffer, f->data);
 }
 
-static void write_cluster(FFat32* f, uint32_t cluster, uint16_t sector)
+static void write_data_cluster(FFat32* f, uint32_t cluster, uint16_t sector)
 {
-    write_sector(f, cluster * f->reg.sectors_per_cluster + sector);
+    write_sector(f, (cluster - 2) * f->reg.sectors_per_cluster + f->reg.data_start_sector + sector - f->reg.partition_start);
 }
 
 //endregion
@@ -181,7 +169,7 @@ static FSInfo fsinfo_recalculate_values(FFat32* f)
         }
     }
     
-    total_free_clusters -= f->reg.data_start_cluster;
+    total_free_clusters -= (f->reg.data_start_sector * f->reg.sectors_per_cluster);
     
     load_sector(f, FSINFO_SECTOR);
     to_32(f->buffer, FSI_FREE_COUNT, total_free_clusters);
@@ -336,7 +324,7 @@ static FDirResult dir(FFat32* f, uint32_t dir_cluster, FContinuation continuatio
         result = (FDirResult) { F_MORE_DATA, next_cluster, next_sector };
     
     // load directory data form sector into buffer
-    load_cluster(f, cluster + f->reg.data_start_cluster, sector);
+    load_data_cluster(f, cluster, sector);
     
     // check if we really have more data to read (the last dir in array is not null)
     if (result.result == F_MORE_DATA && f->buffer[BYTES_PER_SECTOR - DIR_ENTRY_SZ] == '\0')
@@ -543,7 +531,7 @@ static DirEntryPtr find_next_free_directory_entry(FFat32* f, uint32_t path_clust
     // check all dir entries in the cluster
 search_cluster:
     for (dir_entry_ptr.sector = 0; dir_entry_ptr.sector < f->reg.sectors_per_cluster; ++dir_entry_ptr.sector) {
-        load_cluster(f, dir_entry_ptr.cluster + f->reg.data_start_cluster, dir_entry_ptr.sector);
+        load_data_cluster(f, dir_entry_ptr.cluster, dir_entry_ptr.sector);
         for (dir_entry_ptr.entry_ptr = 0; dir_entry_ptr.entry_ptr < BYTES_PER_SECTOR; dir_entry_ptr.entry_ptr += DIR_ENTRY_SZ) {
             uint8_t first_chr = f->buffer[dir_entry_ptr.entry_ptr];
             if (first_chr == DIR_ENTRY_FREE1 || first_chr == DIR_ENTRY_FREE2)
@@ -598,7 +586,7 @@ static int64_t create_entry_in_directory(FFat32* f, int64_t parent_dir_cluster, 
     memcpy(dir_entry.name, filename, FILENAME_SZ);
     memcpy(&f->buffer[dir_entry_ptr.entry_ptr], &dir_entry, sizeof(FDirEntry));
     
-    write_cluster(f, dir_entry_ptr.cluster + f->reg.data_start_cluster, dir_entry_ptr.sector);
+    write_data_cluster(f, dir_entry_ptr.cluster, dir_entry_ptr.sector);
     
     return F_OK;
 }
@@ -662,7 +650,8 @@ static FFatResult f_init(FFat32* f)
     }
     
     // fill out fields
-    f->reg.fat_sector_start = from_16(f->buffer, BPB_RESERVED_SECTORS);
+    uint32_t reserved_sectors = from_16(f->buffer, BPB_RESERVED_SECTORS);
+    f->reg.fat_sector_start = reserved_sectors;
     f->reg.fat_size_sectors = from_32(f->buffer, BPB_FAT_SIZE_SECTORS);
     
     f->reg.sectors_per_cluster = f->buffer[BPB_SECTORS_PER_CLUSTER];
@@ -670,7 +659,8 @@ static FFatResult f_init(FFat32* f)
         return F_NOT_FAT_32;
     
     f->reg.number_of_fats = f->buffer[BPB_NUMBER_OF_FATS];
-    f->reg.data_start_cluster = (f->reg.fat_sector_start + (f->reg.number_of_fats * f->reg.fat_size_sectors)) / f->reg.sectors_per_cluster - 2;
+    uint32_t root_dir_sector = reserved_sectors + (f->reg.number_of_fats * f->reg.fat_size_sectors);
+    f->reg.data_start_sector = root_dir_sector + f->reg.partition_start;
     
     // check if bytes per sector is correct
     uint16_t bytes_per_sector = from_16(f->buffer, BPB_BYTES_PER_SECTOR);
