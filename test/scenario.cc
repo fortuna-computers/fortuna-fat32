@@ -19,9 +19,7 @@ std::vector<Scenario> Scenario::all_scenarios()
     
     scenarios.emplace_back("Standard disk with directories and files");
     
-    /*
     scenarios.emplace_back("Standard empty disk", 1, DiskState::Empty);
-    scenarios.emplace_back("Standard disk with files in root dir", 1, DiskState::FilesInRoot);
     
     scenarios.emplace_back("Raw image without partitions", 0);
     scenarios.emplace_back("Image with 2 partitions", 2, DiskState::Complete, 512);
@@ -31,9 +29,10 @@ std::vector<Scenario> Scenario::all_scenarios()
     
     scenarios.emplace_back("Standard disk with 64 files in root", 1, DiskState::Files64);
     scenarios.emplace_back("Standard disk with 300 files in root", 1, DiskState::Files300);
-     */
     
+    scenarios.emplace_back("Disk with 4 bytes alignment", 1, DiskState::Complete, 256, 4, 4);
     scenarios.emplace_back("Disk with 512 bytes alignment", 1, DiskState::Complete, 256, 4, 512);
+    scenarios.emplace_back("Disk with 2048 bytes alignment", 1, DiskState::Complete, 256, 4, 2048);
     
     return scenarios;
 }
@@ -54,14 +53,11 @@ void Scenario::prepare_scenario() const
     diskio_size = (disk_size * 1024 * 1024) / 512;
     
     // prepare image
-    clear_disk();
+    // clear_disk();
     partition_disk();
     format_disk();
     switch (disk_state) {
         case DiskState::Empty:
-            break;
-        case DiskState::FilesInRoot:
-            add_files_in_root();
             break;
         case DiskState::Complete:
             add_complete_files();
@@ -122,24 +118,6 @@ void Scenario::partition_disk() const
         LBA_t lba[] = { 50, 50, 0 };
         R(f_fdisk(0, lba, work));
     }
-}
-
-void Scenario::add_files_in_root() const
-{
-    extern uint8_t _binary_test_TAGS_TXT_start[];
-    extern uint8_t _binary_test_TAGS_TXT_size;
-    
-    FIL fp;
-    UINT bw;
-    
-    R(f_open(&fp, "HELLO.TXT", FA_CREATE_NEW | FA_WRITE));
-    const char* contents = "Hello world!";
-    R(f_write(&fp, contents, strlen(contents), &bw));
-    R(f_close(&fp));
-    
-    R(f_open(&fp, "TAGS.TXT", FA_CREATE_NEW | FA_WRITE));
-    R(f_write(&fp, _binary_test_TAGS_TXT_start, (size_t) &_binary_test_TAGS_TXT_size, &bw));
-    R(f_close(&fp));
 }
 
 void Scenario::add_complete_files() const

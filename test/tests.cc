@@ -23,7 +23,7 @@ std::vector<Test> prepare_tests()
     tests.emplace_back(
             "Check disk space (pre-existing)",
             
-            [](FFat32* ffat, Scenario const& scenario) {
+            [](FFat32* ffat, Scenario const&) {
                 f_fat32(ffat, F_FREE, 0);
             },
             
@@ -227,9 +227,6 @@ std::vector<Test> prepare_tests()
                 switch (scenario.disk_state) {
                     case Scenario::DiskState::Empty:
                         return true;
-                    case Scenario::DiskState::FilesInRoot:
-                        files = { "HELLO.TXT", "TAGS.TXT" };
-                        break;
                     case Scenario::DiskState::Complete:
                         files = { "HELLO", "FORTUNA.DAT", "TAGS.TXT" };
                         break;
