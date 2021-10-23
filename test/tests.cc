@@ -227,9 +227,6 @@ std::vector<Test> prepare_tests()
                 switch (scenario.disk_state) {
                     case Scenario::DiskState::Empty:
                         return true;
-                    case Scenario::DiskState::FilesInRoot:
-                        files = { "HELLO.TXT", "TAGS.TXT" };
-                        break;
                     case Scenario::DiskState::Complete:
                         files = { "HELLO", "FORTUNA.DAT", "TAGS.TXT" };
                         break;
