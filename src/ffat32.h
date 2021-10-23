@@ -33,14 +33,15 @@ typedef enum {
 
 typedef enum {
     F_OK                        = 0x0,
-    F_MORE_DATA                 = 0x1,
-    F_INCORRECT_OPERATION       = 0x2,
-    F_NOT_FAT_32                = 0x3,
-    F_BYTES_PER_SECTOR_NOT_512  = 0x4,
-    F_INEXISTENT_FILE_OR_DIR    = 0x5,
-    F_FILE_PATH_TOO_LONG        = 0x6,
-    F_INVALID_FILENAME          = 0x7,
-    F_DISK_FULL                 = 0x8,
+    F_MORE_DATA                 = 0x1,  // operation went OK but there's more data to fetch/save
+    F_IO_ERROR                  = 0x2,  // the disk could not be accessed for some reason (error in read/write callbacks)
+    F_INCORRECT_OPERATION       = 0x3,  // tried to call an operation that does not exist
+    F_NOT_FAT_32                = 0x4,  // the filesystem is not FAT32
+    F_BYTES_PER_SECTOR_NOT_512  = 0x5,  // BPB_BYTES_PER_SECTOR is not 512
+    F_INEXISTENT_FILE_OR_DIR    = 0x6,  // file not found
+    F_FILE_PATH_TOO_LONG        = 0x7,  // file path larger that 127
+    F_INVALID_FILENAME          = 0x8,  // filename contains an invalid character
+    F_DEVICE_FULL               = 0x9,  // no space left on device
 } FFatResult;
 
 typedef enum {

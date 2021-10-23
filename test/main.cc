@@ -15,6 +15,7 @@
 
 extern std::vector<Test> prepare_tests();
 uint8_t buffer[512];
+bool    disk_ok = true;
 
 static void print_test_descriptions(std::vector<Test> const& tests)
 {
@@ -73,11 +74,11 @@ int main()
         .data = Scenario::image(),
         .write = [](uint32_t block, uint8_t const* buffer, void* data) {
             memcpy(&((char*) data)[block * 512], buffer, 512);
-            return true;
+            return disk_ok;
         },
         .read = [](uint32_t block, uint8_t* buffer, void* data) {
             memcpy(buffer, &((char const*) data)[block * 512], 512);
-            return true;
+            return disk_ok;
         },
         .reg = {},
     };
