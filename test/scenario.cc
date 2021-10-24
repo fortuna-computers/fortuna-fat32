@@ -17,8 +17,7 @@ std::vector<Scenario> Scenario::all_scenarios()
 {
     std::vector<Scenario> scenarios;
     
-    /*
-    scenarios.emplace_back("Standard disk with directories and files");
+    // scenarios.emplace_back("Standard disk with directories and files");
     
     scenarios.emplace_back("Standard empty disk", 1, DiskState::Empty);
     
@@ -28,16 +27,13 @@ std::vector<Scenario> Scenario::all_scenarios()
     scenarios.emplace_back("Disk with one sector per cluster", 1, DiskState::Complete, 64, 1);
     scenarios.emplace_back("Disk with 8 sectors per cluster", 1, DiskState::Complete, 512, 8);
     
-     */
     scenarios.emplace_back("Standard disk with 64 files in root", 1, DiskState::Files64);
     
-    /*
     scenarios.emplace_back("Standard disk with 300 files in root", 1, DiskState::Files300);
     
     scenarios.emplace_back("Disk with 4 bytes alignment", 1, DiskState::Complete, 256, 4, 4);
     scenarios.emplace_back("Disk with 512 bytes alignment", 1, DiskState::Complete, 256, 4, 512);
     scenarios.emplace_back("Disk with 2048 bytes alignment", 1, DiskState::Complete, 256, 4, 2048);
-     */
     
     return scenarios;
 }

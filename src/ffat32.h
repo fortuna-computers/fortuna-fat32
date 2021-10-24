@@ -66,7 +66,7 @@ typedef struct {
     uint32_t   state_next_sector;
 } FFatRegisters;
 
-typedef struct {
+typedef struct FFat32 {
     uint8_t*      buffer;   // 512 bytes
     void*         data;
     bool          (*write)(uint32_t block, uint8_t const* buffer, void* data);   // implement this
