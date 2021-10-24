@@ -297,16 +297,16 @@ static FFatResult fat_append_cluster(FFat32* f, uint32_t continue_from_cluster, 
 // region ...
 
 typedef struct {
-    FFatResult result;
     uint32_t   next_cluster;
     uint16_t   next_sector;
 } FDirResult;
 
-static FDirResult dir(FFat32* f, uint32_t dir_cluster, FContinuation continuation, uint32_t continue_on_cluster, uint16_t continue_on_sector)
+static FFatResult dir(FFat32* f, uint32_t dir_cluster, FContinuation continuation, uint32_t continue_on_cluster, uint16_t continue_on_sector, FDirResult* dir_result)
 {
-    FDirResult result;
     uint32_t cluster;
     uint16_t sector;
+    
+    dir_result->next_cluster = dir_result->next_sector = 0;
     
     // find current cluster and sector
     if (continuation == F_START_OVER) {   // user has requested to start reading a new directory
@@ -328,17 +328,22 @@ static FDirResult dir(FFat32* f, uint32_t dir_cluster, FContinuation continuatio
     }
     
     // check if more data is needed
-    if (next_cluster == FAT_EOC || next_cluster == FAT_EOF)
-        result = (FDirResult) { F_OK, 0, 0 };
-    else
-        result = (FDirResult) { F_MORE_DATA, next_cluster, next_sector };
+    FFatResult result;
+    if (next_cluster == FAT_EOC || next_cluster == FAT_EOF) {
+        result = F_OK;
+    } else {
+        dir_result->next_cluster = next_cluster;
+        dir_result->next_sector = next_sector;
+        result = F_MORE_DATA;
+    }
     
     // load directory data form sector into buffer
-    load_data_cluster(f, cluster, sector);
+    IO(load_data_cluster(f, cluster, sector))
     
-    // check if we really have more data to read (the last dir in array is not null)
-    if (result.result == F_MORE_DATA && f->buffer[BYTES_PER_SECTOR - DIR_ENTRY_SZ] == '\0')
-        result = (FDirResult) { F_OK, 0, 0 };
+    // check if we *really* have more data to read (the last dir in array is not null)
+    if (result == F_MORE_DATA && f->buffer[BYTES_PER_SECTOR - DIR_ENTRY_SZ] == '\0') {
+        return F_OK;
+    }
     
     return result;
 }
@@ -374,13 +379,14 @@ static int64_t find_file_cluster_rel(FFat32* f, const char* filename, size_t fil
     parse_filename(parsed_filename, filename, filename_sz);
     
     // load current directory
-    FDirResult result = { F_OK, 0, 0 };
+    FFatResult result;
+    FDirResult dir_result = { 0, 0 };
     FContinuation continuation = F_START_OVER;
     do {
         // read directory
-        result = dir(f, current_cluster, continuation, result.next_cluster, result.next_sector);
-        if (result.result != F_OK && result.result != F_MORE_DATA)
-            return -result.result;
+        result = dir(f, current_cluster, continuation, dir_result.next_cluster, dir_result.next_sector, &dir_result);
+        if (result != F_OK && result != F_MORE_DATA)
+            return -result;
         
         // iterate through returned files
         for (uint16_t i = 0; i < (BYTES_PER_SECTOR / DIR_ENTRY_SZ); ++i) {
@@ -404,7 +410,7 @@ static int64_t find_file_cluster_rel(FFat32* f, const char* filename, size_t fil
         
         continuation = F_CONTINUE;  // in next fetch, continue the previous one
         
-    } while (result.result == F_MORE_DATA);
+    } while (result == F_MORE_DATA);
     
     // the directory was not found
     return -F_INEXISTENT_FILE_OR_DIR;
@@ -736,11 +742,12 @@ static FFatResult f_boot(FFat32* f)
 
 static FFatResult f_dir(FFat32* f)
 {
-    FDirResult result = dir(f, f->reg.current_dir_cluster, f->buffer[0],
-                            f->reg.state_next_cluster, f->reg.state_next_sector);
-    f->reg.state_next_cluster = result.next_cluster;
-    f->reg.state_next_sector = result.next_sector;
-    return result.result;
+    FDirResult dir_result;
+    FFatResult result = dir(f, f->reg.current_dir_cluster, f->buffer[0],
+                            f->reg.state_next_cluster, f->reg.state_next_sector, &dir_result);
+    f->reg.state_next_cluster = dir_result.next_cluster;
+    f->reg.state_next_sector = dir_result.next_sector;
+    return result;
 }
 
 static FFatResult f_cd(FFat32* f)
