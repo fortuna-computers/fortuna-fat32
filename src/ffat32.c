@@ -212,7 +212,7 @@ static FFatResult fsinfo_update(FFat32* f, FSInfo const* fs_info)
 // region ...
 
 // Get the data cluster pointer from the FAT.
-static uint32_t fat_data_cluster_ptr(FFat32* f, uint32_t cluster)
+static int64_t fat_data_cluster_ptr(FFat32* f, uint32_t cluster)
 {
     uint32_t cluster_loc = cluster * 4;
     uint32_t sector_to_load = cluster_loc / BYTES_PER_SECTOR;
@@ -251,7 +251,7 @@ static FFatResult fat_find_first_free_cluster(FFat32* f, uint32_t start_at, uint
     uint32_t pos = f->reg.fat_sector_start;
     uint32_t count = starting_sector * 128;
     for (uint32_t i = starting_sector; i < f->reg.fat_size_sectors; ++i) {
-        load_sector(f, pos + i);
+        IO(load_sector(f, pos + i))
         for (uint32_t j = 0; j < BYTES_PER_SECTOR / 4; ++j) {
             uint32_t pointer = from_32(f->buffer, j * 4);
             if (pointer == FAT_FREE) {
