@@ -373,6 +373,8 @@ static void parse_filename(char result[11], char const* filename, size_t filenam
     }
 }
 
+// Load sector containing dir entries from a specific directory cluster. If data doesn't fit one sector, returns F_MORE_DATA.
+// By setting `continuation` and `continue_on_cluster/sector`, one can continue a previous iteration.
 static int64_t find_file_cluster_rel(FFat32* f, const char* filename, size_t filename_sz, uint32_t current_cluster, uint16_t* file_struct_ptr)
 {
     char parsed_filename[FILENAME_SZ];
