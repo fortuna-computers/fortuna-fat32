@@ -149,7 +149,8 @@ static FFatResult fsinfo_recalculate_next_free_cluster(FFat32* f, uint32_t* next
     to_32(f->buffer, FSI_NEXT_FREE, first_free_cluster);
     IO(write_sector(f, FSINFO_SECTOR))
     
-    return first_free_cluster;
+    *next_free_cluster = first_free_cluster;
+    return F_OK;
 }
 
 // Recalculate FSINFO values (next free cluster and total free clusters). Updates FSINFO.
@@ -184,21 +185,23 @@ static FFatResult fsinfo_recalculate_values(FFat32* f, FSInfo* fs_info)
     return F_OK;
 }
 
-static FSInfo fsinfo_values(FFat32* f)
+// Read FSINFO values from disk.
+static FFatResult fsinfo_values(FFat32* f, FSInfo* fs_info)
 {
-    load_sector(f, FSINFO_SECTOR);
-    return (FSInfo) {
-            .free_cluster_count = from_32(f->buffer, FSI_FREE_COUNT),
-            .last_used_cluster = from_32(f->buffer, FSI_NEXT_FREE),
-    };
+    IO(load_sector(f, FSINFO_SECTOR))
+    fs_info->free_cluster_count = from_32(f->buffer, FSI_FREE_COUNT);
+    fs_info->last_used_cluster = from_32(f->buffer, FSI_NEXT_FREE);
+    return F_OK;
 }
 
-static void fsinfo_update(FFat32* f, FSInfo const* fs_info)
+// Update FSINFO values to disk,
+static FFatResult fsinfo_update(FFat32* f, FSInfo const* fs_info)
 {
-    load_sector(f, FSINFO_SECTOR);
+    IO(load_sector(f, FSINFO_SECTOR))
     to_32(f->buffer, FSI_FREE_COUNT, fs_info->free_cluster_count);
     to_32(f->buffer, FSI_NEXT_FREE, fs_info->last_used_cluster);
-    write_sector(f, FSINFO_SECTOR);
+    IO(write_sector(f, FSINFO_SECTOR))
+    return F_OK;
 }
 
 // endregion
@@ -260,7 +263,8 @@ static int64_t fat_find_first_free_cluster(FFat32* f, uint32_t start_at)
 static int64_t fat_append_cluster(FFat32* f, uint32_t continue_from_cluster)
 {
     // get next cluster from FSINFO
-    FSInfo fs_info = fsinfo_values(f);
+    FSInfo fs_info;
+    RETURN_UNLESS_F_OK(fsinfo_values(f, &fs_info))
     
     // find next free cluster (cluster F)
     int64_t next_free_cluster = fat_find_first_free_cluster(f, fs_info.last_used_cluster);
@@ -275,7 +279,7 @@ static int64_t fat_append_cluster(FFat32* f, uint32_t continue_from_cluster)
     
     // update FSINFO
     fs_info.last_used_cluster = next_free_cluster;
-    fsinfo_update(f, &fs_info);
+    RETURN_UNLESS_F_OK(fsinfo_update(f, &fs_info))
     
     return next_free_cluster;
 }
