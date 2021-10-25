@@ -373,9 +373,34 @@ static void parse_filename(char result[11], char const* filename, size_t filenam
     }
 }
 
+static bool find_file_cluster_in_dir_entry(FFat32* f, const char* parsed_filename, uint32_t* cluster, uint16_t* file_struct_ptr)
+{
+    for (uint16_t i = 0; i < (BYTES_PER_SECTOR / DIR_ENTRY_SZ); ++i) {
+        uint16_t addr = i * DIR_ENTRY_SZ;
+        if (f->buffer[addr + DIR_FILENAME] == 0)  // no more files
+            break;
+        
+        uint8_t attr = f->buffer[addr + DIR_ATTR];   // attribute should be 0x10
+        
+        // if file/directory is found
+        if (((attr & ATTR_DIR) || (attr & ATTR_ARCHIVE))
+            && strncmp(parsed_filename, (const char *) &f->buffer[addr + DIR_FILENAME], FILENAME_SZ) == 0) {
+            
+            // return file/directory cluster
+            if (file_struct_ptr)
+                *file_struct_ptr = addr;
+            *cluster = *(uint16_t *) &f->buffer[addr + DIR_CLUSTER_LOW]
+                       | ((uint32_t) (*(uint16_t *) &f->buffer[addr + DIR_CLUSTER_HIGH]) << 8);
+            return true;
+        }
+    }
+    
+    return false;
+}
+
 // Load sector containing dir entries from a specific directory cluster. If data doesn't fit one sector, returns F_MORE_DATA.
 // By setting `continuation` and `continue_on_cluster/sector`, one can continue a previous iteration.
-static int64_t find_file_cluster_rel(FFat32* f, const char* filename, size_t filename_sz, uint32_t current_cluster, uint16_t* file_struct_ptr)
+static int64_t find_file_cluster_in_dir_cluster(FFat32* f, const char* filename, size_t filename_sz, uint32_t current_cluster, uint16_t* file_struct_ptr)
 {
     char parsed_filename[FILENAME_SZ];
     parse_filename(parsed_filename, filename, filename_sz);
@@ -391,24 +416,9 @@ static int64_t find_file_cluster_rel(FFat32* f, const char* filename, size_t fil
             return -result;
         
         // iterate through returned files
-        for (uint16_t i = 0; i < (BYTES_PER_SECTOR / DIR_ENTRY_SZ); ++i) {
-            uint16_t addr = i * DIR_ENTRY_SZ;
-            if (f->buffer[addr + DIR_FILENAME] == 0)  // no more files
-                break;
-            
-            uint8_t attr = f->buffer[addr + DIR_ATTR];   // attribute should be 0x10
-            
-            // if file/directory is found
-            if (((attr & ATTR_DIR) || (attr & ATTR_ARCHIVE))
-                && strncmp(parsed_filename, (const char *) &f->buffer[addr + DIR_FILENAME], FILENAME_SZ) == 0) {
-                
-                // return file/directory cluster
-                if (file_struct_ptr)
-                    *file_struct_ptr = addr;
-                return *(uint16_t *) &f->buffer[addr + DIR_CLUSTER_LOW]
-                        | ((uint32_t) (*(uint16_t *) &f->buffer[addr + DIR_CLUSTER_HIGH]) << 8);
-            }
-        }
+        uint32_t cluster;
+        if (find_file_cluster_in_dir_entry(f, parsed_filename, &cluster, file_struct_ptr))
+            return cluster;
         
         continuation = F_CONTINUE;  // in next fetch, continue the previous one
         
@@ -443,12 +453,12 @@ static int64_t find_file_cluster(FFat32* f, const char* path, uint16_t* file_str
         
         char* end = strchr(file, '/');
         if (end != NULL) {
-            current_cluster = find_file_cluster_rel(f, file, end - file, current_cluster, file_struct_ptr);
+            current_cluster = find_file_cluster_in_dir_cluster(f, file, end - file, current_cluster, file_struct_ptr);
             if (current_cluster == 0)   // file not found
                 return -F_INEXISTENT_FILE_OR_DIR;
             file = end + 1;  // skip to next
         } else {
-            return find_file_cluster_rel(f, file, len, current_cluster, file_struct_ptr);
+            return find_file_cluster_in_dir_cluster(f, file, len, current_cluster, file_struct_ptr);
         }
     }
 }
