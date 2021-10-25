@@ -418,13 +418,14 @@ static int64_t find_file_cluster_rel(FFat32* f, const char* filename, size_t fil
     return -F_INEXISTENT_FILE_OR_DIR;
 }
 
-static int64_t find_file_cluster(FFat32* f, const char* filename, uint16_t* file_struct_ptr)
+// Find the data index cluster of a given `path`.
+static int64_t find_file_cluster(FFat32* f, const char* path, uint16_t* file_struct_ptr)
 {
     // store file path for later
-    size_t len = strlen(filename);
+    size_t len = strlen(path);
     if (len >= MAX_FILE_PATH)
         return -F_FILE_PATH_TOO_LONG;
-    strcpy(global_file_path, filename);
+    strcpy(global_file_path, path);
     char* file = global_file_path;
     
     int64_t current_cluster;
