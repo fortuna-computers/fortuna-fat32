@@ -831,7 +831,7 @@ static FFatResult is_directory_empty(FFat32* f, FPathLocation const* path_locati
         
     } while (result == F_MORE_DATA);   // if that was the last sector in the directory cluster containing files, exit loop
     
-    return count == 2;
+    return count == 2 ? F_OK : F_DIR_NOT_EMPTY;
 }
 
 static FFatResult f_dir(FFat32* f)
@@ -884,8 +884,6 @@ static FFatResult f_rmdir(FFat32* f)
     // check if directory is empty
     bool is_empty;
     RETURN_UNLESS_F_OK(is_directory_empty(f, &path_location, &is_empty))
-    if (!is_empty)
-        return F_DIR_NOT_EMPTY;
     
     // remove directory "file"
     RETURN_UNLESS_F_OK(remove_file(f, &path_location))
