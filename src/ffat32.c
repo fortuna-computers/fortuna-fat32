@@ -413,18 +413,18 @@ static FFatResult find_file_cluster_in_dir_entries_cluster(FFat32* f, const char
     
     // load current directory
     FFatResult result;
-    FDirResult dir_result = { 0, 0 };
+    FDirResult dir_result = { dir_entries_cluster, 0 };
     FContinuation continuation = F_START_OVER;
     
     do {   // each iteration looks to one sector in the cluster
-        
+    
+        path_location->parent_dir_cluster = dir_result.next_cluster;
+        path_location->parent_dir_sector = dir_result.next_sector;
+    
         // read directory
         result = dir(f, dir_entries_cluster, continuation, dir_result.next_cluster, dir_result.next_sector, &dir_result);
         if (result != F_OK && result != F_MORE_DATA)
             return result;
-        
-        path_location->parent_dir_cluster = dir_result.next_cluster;
-        path_location->parent_dir_sector = dir_result.next_sector;
         
         // iterate through files in directory sector
         if (find_file_cluster_in_dir_entries_sector(f, parsed_filename, path_location) == F_OK)
@@ -799,10 +799,8 @@ static FFatResult f_mkdir(FFat32* f, uint32_t fat_datetime)
 static FFatResult f_rmdir(FFat32* f)
 {
     // find directory
-    uint32_t directory_cluster_number;
-    uint16_t dir_entry_ptr;
-    // TODO - find_path_cluster_number - return parent_dir cluster
-    RETURN_UNLESS_F_OK(find_path_cluster_number(f, (const char *) f->buffer, &directory_cluster_number, &dir_entry_ptr))
+    FPathLocation path_location;
+    RETURN_UNLESS_F_OK(find_path_location(f, (const char *) f->buffer, &path_location))
     ;
     
     /*
