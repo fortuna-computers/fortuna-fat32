@@ -373,6 +373,7 @@ static void parse_filename(char result[11], char const* filename, size_t filenam
     }
 }
 
+
 static bool find_file_cluster_in_dir_entry(FFat32* f, const char* parsed_filename, uint32_t* cluster, uint16_t* file_struct_ptr)
 {
     for (uint16_t i = 0; i < (BYTES_PER_SECTOR / DIR_ENTRY_SZ); ++i) {
@@ -398,9 +399,8 @@ static bool find_file_cluster_in_dir_entry(FFat32* f, const char* parsed_filenam
     return false;
 }
 
-// Load sector containing dir entries from a specific directory cluster. If data doesn't fit one sector, returns F_MORE_DATA.
-// By setting `continuation` and `continue_on_cluster/sector`, one can continue a previous iteration.
-static int64_t find_file_cluster_in_dir_cluster(FFat32* f, const char* filename, size_t filename_sz, uint32_t current_cluster, uint16_t* file_struct_ptr)
+// Load cluster containing dir entries from a specific directory cluster (sectory by sector).
+static int64_t find_file_cluster_in_dir_cluster(FFat32* f, const char* filename, size_t filename_sz, uint32_t start_at_cluster, uint16_t* file_struct_ptr)
 {
     char parsed_filename[FILENAME_SZ];
     parse_filename(parsed_filename, filename, filename_sz);
@@ -411,7 +411,7 @@ static int64_t find_file_cluster_in_dir_cluster(FFat32* f, const char* filename,
     FContinuation continuation = F_START_OVER;
     do {
         // read directory
-        result = dir(f, current_cluster, continuation, dir_result.next_cluster, dir_result.next_sector, &dir_result);
+        result = dir(f, start_at_cluster, continuation, dir_result.next_cluster, dir_result.next_sector, &dir_result);
         if (result != F_OK && result != F_MORE_DATA)
             return -result;
         
@@ -428,16 +428,17 @@ static int64_t find_file_cluster_in_dir_cluster(FFat32* f, const char* filename,
     return -F_INEXISTENT_FILE_OR_DIR;
 }
 
-// Find the data index cluster of a given `path`.
-static int64_t find_file_cluster(FFat32* f, const char* path, uint16_t* file_struct_ptr)
+// Crawl directories until if finds the data index cluster for a given path.
+static int64_t find_path_cluster(FFat32* f, const char* path, uint16_t* file_struct_ptr)
 {
-    // store file path for later
+    // copy file path to a global variable, so we can change it
     size_t len = strlen(path);
     if (len >= MAX_FILE_PATH)
         return -F_FILE_PATH_TOO_LONG;
-    strcpy(global_file_path, path);
+    strcpy(global_file_path, path);   // TODO - do we really need the global?
     char* file = global_file_path;
     
+    // find starting cluster
     int64_t current_cluster;
     if (file[0] == '/') {   // absolute path
         current_cluster = f->reg.root_dir_cluster;
@@ -446,18 +447,21 @@ static int64_t find_file_cluster(FFat32* f, const char* path, uint16_t* file_str
         current_cluster = f->reg.current_dir_cluster;
     }
     
-    while (1) {   // iterate directory by directory
-        len = strlen(file);
+    while (1) {   // each iteration will crawl one directory
+        
+        len = strlen(file);   // is this the last directory?
         if (len == 0)
             return current_cluster;
         
         char* end = strchr(file, '/');
-        if (end != NULL) {
+        
+        if (end != NULL) {   // this is a directory: find dir cluster and continue crawling
             current_cluster = find_file_cluster_in_dir_cluster(f, file, end - file, current_cluster, file_struct_ptr);
             if (current_cluster == 0)   // file not found
                 return -F_INEXISTENT_FILE_OR_DIR;
             file = end + 1;  // skip to next
-        } else {
+            
+        } else {  // this is the final file/dir in path: find cluster and return it
             return find_file_cluster_in_dir_cluster(f, file, len, current_cluster, file_struct_ptr);
         }
     }
@@ -632,7 +636,7 @@ static int64_t create_file_entry(FFat32* f, char* file_path, uint8_t attrib, uin
     // parse filename and find parent directory cluster
     char filename[FILENAME_SZ];
     split_path_and_filename(file_path, filename);
-    int64_t path_cluster = find_file_cluster(f, file_path, NULL);
+    int64_t path_cluster = find_path_cluster(f, file_path, NULL);
     if (path_cluster < 0)
         return path_cluster;
     *parent_dir = path_cluster;
@@ -765,7 +769,7 @@ static FFatResult f_dir(FFat32* f)
 
 static FFatResult f_cd(FFat32* f)
 {
-    int64_t cluster = find_file_cluster(f, (const char *) f->buffer, NULL);
+    int64_t cluster = find_path_cluster(f, (const char*) f->buffer, NULL);
     if (cluster < 0) {
         return cluster * (-1);
     } else {
@@ -805,7 +809,7 @@ static FFatResult f_mkdir(FFat32* f, uint32_t fat_datetime)
 static FFatResult f_stat(FFat32* f)
 {
     uint16_t addr;
-    int64_t cluster = find_file_cluster(f, (const char *) f->buffer, &addr);
+    int64_t cluster = find_path_cluster(f, (const char*) f->buffer, &addr);
     if (cluster < 0)
         return -cluster;
     
