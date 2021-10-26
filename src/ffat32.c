@@ -362,7 +362,7 @@ static void parse_filename(char result[11], char const* filename, size_t filenam
 }
 
 // Search a directory entry sector for a file, and return its data data_cluster if found.
-static bool find_file_cluster_in_dir_entry(FFat32* f, const char* filename, uint32_t* data_cluster, uint16_t* file_entry_ptr)
+static FFatResult find_file_cluster_in_dir_entry(FFat32* f, const char* filename, uint32_t* data_cluster, uint16_t* file_entry_ptr)
 {
     for (uint16_t i = 0; i < (BYTES_PER_SECTOR / DIR_ENTRY_SZ); ++i) {   // iterate through each entry
         uint16_t addr = i * DIR_ENTRY_SZ;
@@ -381,11 +381,11 @@ static bool find_file_cluster_in_dir_entry(FFat32* f, const char* filename, uint
                 *file_entry_ptr = addr;
             *data_cluster = *(uint16_t *) &f->buffer[addr + DIR_CLUSTER_LOW]
                             | ((uint32_t) (*(uint16_t *) &f->buffer[addr + DIR_CLUSTER_HIGH]) << 8);
-            return true;
+            return F_OK;
         }
     }
     
-    return false;
+    return F_INEXISTENT_FILE_OR_DIR;
 }
 
 // Load cluster containing dir entries from a specific directory cluster and try to find the entry with the specific filename.
@@ -409,7 +409,7 @@ static int64_t find_file_cluster_in_dir_cluster(FFat32* f, const char* filename,
         
         // iterate through files in directory sector
         uint32_t cluster;
-        if (find_file_cluster_in_dir_entry(f, parsed_filename, &cluster, file_entry_ptr))
+        if (find_file_cluster_in_dir_entry(f, parsed_filename, &cluster, file_entry_ptr) == F_OK)
             return cluster;
         
         continuation = F_CONTINUE;  // in next fetch, continue the previous one
