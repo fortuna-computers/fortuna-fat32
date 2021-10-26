@@ -18,7 +18,7 @@ static char global_file_path[MAX_FILE_PATH];
 /*  LOCATIONS ON DISK  */
 /***********************/
 
-#define MBR               0
+#define MBR_SECTOR        0
 #define BOOT_SECTOR       0
 #define FSINFO_SECTOR     1
 
@@ -38,6 +38,7 @@ static char global_file_path[MAX_FILE_PATH];
 #define BYTES_PER_SECTOR  512
 #define DIR_ENTRY_SZ       32
 #define FILENAME_SZ        11
+#define FAT_ENTRIES_PER_SECTOR (BYTES_PER_SECTOR / sizeof(uint32_t))  /* = 128 */
 
 #define FAT_EOF    0x0fffffff
 #define FAT_EOC    0x0ffffff8
@@ -53,8 +54,13 @@ static char global_file_path[MAX_FILE_PATH];
 #define DIR_ENTRY_FREE1  0x00
 #define DIR_ENTRY_FREE2  0xe5
 
-#define ATTR_DIR     0x10
-#define ATTR_ARCHIVE 0x20
+#define ATTR_DIR         0x10
+#define ATTR_ARCHIVE     0x20
+
+
+/************/
+/*  MACROS  */
+/************/
 
 #define RETURN_UNLESS_F_OK(expr) { FFatResult r = (expr); if (r != F_OK) return r; }
 #define TRY_IO(expr) { if (!(expr)) return F_IO_ERROR; }
@@ -66,17 +72,17 @@ static char global_file_path[MAX_FILE_PATH];
 
 // region ...
 
-static uint16_t from_16(uint8_t const* buffer, uint16_t pos)
+static inline uint16_t from_16(uint8_t const* buffer, uint16_t pos)
 {
     return *(uint16_t *) &buffer[pos];
 }
 
-static uint32_t from_32(uint8_t const* buffer, uint16_t pos)
+static inline uint32_t from_32(uint8_t const* buffer, uint16_t pos)
 {
     return *(uint32_t *) &buffer[pos];
 }
 
-static void to_32(uint8_t* buffer, uint16_t pos, uint32_t value)
+static inline void to_32(uint8_t* buffer, uint16_t pos, uint32_t value)
 {
     *(uint32_t *) &buffer[pos] = value;
 }
@@ -89,26 +95,26 @@ static void to_32(uint8_t* buffer, uint16_t pos, uint32_t value)
 
 // region ...
 
-static bool load_sector(FFat32* f, uint32_t sector)
+static inline bool load_sector(FFat32* f, uint32_t sector)
 {
     sector += f->reg.partition_start;
     return f->read(sector, f->buffer, f->data);
 }
 
-static bool load_data_cluster(FFat32* f, uint32_t cluster, uint16_t sector)
+static inline bool load_data_cluster(FFat32* f, uint32_t cluster, uint16_t sector)
 {
-    return load_sector(f, (cluster - 2) * f->reg.sectors_per_cluster + f->reg.data_start_sector + sector - f->reg.partition_start);
+    return load_sector(f, (cluster - 2) * f->reg.sectors_per_cluster + f->reg.data_sector_start + sector - f->reg.partition_start);
 }
 
-static bool write_sector(FFat32* f, uint32_t sector)
+static inline bool write_sector(FFat32* f, uint32_t sector)
 {
     sector += f->reg.partition_start;
     return f->write(sector, f->buffer, f->data);
 }
 
-static bool write_data_cluster(FFat32* f, uint32_t cluster, uint16_t sector)
+static inline bool write_data_cluster(FFat32* f, uint32_t cluster, uint16_t sector)
 {
-    return write_sector(f, (cluster - 2) * f->reg.sectors_per_cluster + f->reg.data_start_sector + sector - f->reg.partition_start);
+    return write_sector(f, (cluster - 2) * f->reg.sectors_per_cluster + f->reg.data_sector_start + sector - f->reg.partition_start);
 }
 
 //endregion
@@ -120,11 +126,11 @@ static bool write_data_cluster(FFat32* f, uint32_t cluster, uint16_t sector)
 // region ...
 
 typedef struct {
-    uint32_t last_used_cluster;
+    uint32_t next_free_cluster;
     uint32_t free_cluster_count;
 } FSInfo;
 
-static FFatResult fat_find_first_free_cluster(FFat32* f, uint32_t start_at, uint32_t* first_free_cluster);
+static FFatResult fat_find_first_free_cluster(FFat32* f, uint32_t fat_cluster_start_at, uint32_t* first_free_cluster_number);
 
 // Ignore FSINFO and calculate next free cluster from FAT. Updates FSINFO.
 static FFatResult fsinfo_recalculate_next_free_cluster(FFat32* f, uint32_t* next_free_cluster)
@@ -141,52 +147,51 @@ static FFatResult fsinfo_recalculate_next_free_cluster(FFat32* f, uint32_t* next
 }
 
 // Recalculate FSINFO values (next free cluster and total free clusters). Updates FSINFO.
-static FFatResult fsinfo_recalculate_values(FFat32* f, FSInfo* fs_info)
+static FFatResult fsinfo_recalculate(FFat32* f, FSInfo* fs_info)
 {
     fs_info->free_cluster_count = 0;
-    fs_info->last_used_cluster = 0;
+    fs_info->next_free_cluster = 0;
     
-    // count free clusters on FAT
-    uint32_t pos = f->reg.fat_sector_start;
-    uint32_t count = 0;
-    for (uint32_t i = 0; i < f->reg.fat_size_sectors; ++i) {
-        TRY_IO(load_sector(f, pos + i))
-        for (uint32_t j = 0; j < BYTES_PER_SECTOR / 4; ++j) {
-            uint32_t pointer = from_32(f->buffer, j * 4);
-            if (pointer == FAT_FREE) {
-                if (fs_info->last_used_cluster == 0)
-                    fs_info->last_used_cluster = count;
+    // free_cluster_count free clusters on FAT
+    uint32_t free_cluster_count = 0;
+    for (uint32_t fat_sector = 0; fat_sector < f->reg.fat_size_sectors; ++fat_sector) {   // iterate over all sectors that make up the FAT
+        TRY_IO(load_sector(f, f->reg.fat_sector_start + fat_sector))
+        for (uint32_t fat_entry_ptr = 0; fat_entry_ptr < BYTES_PER_SECTOR / 4; ++fat_entry_ptr) {   // iterate over all cluster pointers
+            uint32_t data_cluster = from_32(f->buffer, fat_entry_ptr * 4);
+            if (data_cluster == FAT_FREE) {
+                if (fs_info->next_free_cluster == 0)
+                    fs_info->next_free_cluster = data_cluster;
                 ++fs_info->free_cluster_count;
             }
-            ++count;
+            ++free_cluster_count;
         }
     }
     
-    fs_info->free_cluster_count -= (f->reg.data_start_sector * f->reg.sectors_per_cluster);
+    fs_info->free_cluster_count -= (f->reg.data_sector_start * f->reg.sectors_per_cluster);
     
     TRY_IO(load_sector(f, FSINFO_SECTOR))
     to_32(f->buffer, FSI_FREE_COUNT, fs_info->free_cluster_count);
-    to_32(f->buffer, FSI_NEXT_FREE, fs_info->last_used_cluster);
+    to_32(f->buffer, FSI_NEXT_FREE, fs_info->next_free_cluster);
     TRY_IO(write_sector(f, FSINFO_SECTOR))
     
     return F_OK;
 }
 
 // Read FSINFO values from disk.
-static FFatResult fsinfo_values(FFat32* f, FSInfo* fs_info)
+static FFatResult fsinfo_get(FFat32* f, FSInfo* fs_info)
 {
     TRY_IO(load_sector(f, FSINFO_SECTOR))
     fs_info->free_cluster_count = from_32(f->buffer, FSI_FREE_COUNT);
-    fs_info->last_used_cluster = from_32(f->buffer, FSI_NEXT_FREE);
+    fs_info->next_free_cluster = from_32(f->buffer, FSI_NEXT_FREE);
     return F_OK;
 }
 
-// Update FSINFO values to disk,
+// Update FSINFO values to disk.
 static FFatResult fsinfo_update(FFat32* f, FSInfo const* fs_info)
 {
     TRY_IO(load_sector(f, FSINFO_SECTOR))
     to_32(f->buffer, FSI_FREE_COUNT, fs_info->free_cluster_count);
-    to_32(f->buffer, FSI_NEXT_FREE, fs_info->last_used_cluster);
+    to_32(f->buffer, FSI_NEXT_FREE, fs_info->next_free_cluster);
     TRY_IO(write_sector(f, FSINFO_SECTOR))
     return F_OK;
 }
@@ -199,31 +204,31 @@ static FFatResult fsinfo_update(FFat32* f, FSInfo const* fs_info)
 
 // region ...
 
-// Get the data cluster_index pointer from the FAT.
-static FFatResult fat_data_cluster_ptr(FFat32* f, uint32_t cluster_index, uint32_t* data_cluster)
+// Get the data cluster from the FAT based on the cluster number.
+static FFatResult fat_get_data_cluster(FFat32* f, uint32_t cluster_number_in_fat, uint32_t* data_cluster)
 {
-    uint32_t cluster_loc = cluster_index * 4;
-    uint32_t sector_to_load = cluster_loc / BYTES_PER_SECTOR;
+    uint32_t cluster_ptr = cluster_number_in_fat * 4;
+    uint32_t sector_to_load = cluster_ptr / BYTES_PER_SECTOR;
     
     TRY_IO(load_sector(f, f->reg.fat_sector_start + sector_to_load))
     
-    *data_cluster = from_32(f->buffer, cluster_loc % BYTES_PER_SECTOR);
+    *data_cluster = from_32(f->buffer, cluster_ptr % BYTES_PER_SECTOR);
     
     return F_OK;
 }
 
 // Update the data cluster pointer in the FAT.
-static FFatResult fat_update_data_cluster_ptr(FFat32* f, uint32_t cluster, uint32_t ptr)
+static FFatResult fat_update_data_cluster(FFat32* f, uint32_t cluster_number_in_fat, uint32_t ptr)
 {
-    uint32_t cluster_loc = cluster * 4;
-    uint32_t sector_to_load = cluster_loc / BYTES_PER_SECTOR;
+    uint32_t cluster_ptr = cluster_number_in_fat * 4;
+    uint32_t sector_to_update = cluster_ptr / BYTES_PER_SECTOR;
     
-    // read FAT and replace cluster
-    TRY_IO(load_sector(f, f->reg.fat_sector_start + sector_to_load))
-    to_32(f->buffer, cluster_loc % BYTES_PER_SECTOR, ptr);
+    // read FAT and replace cluster_number_in_fat
+    TRY_IO(load_sector(f, f->reg.fat_sector_start + sector_to_update))
+    to_32(f->buffer, cluster_ptr % BYTES_PER_SECTOR, ptr);
     
-    // write FAT and FAT copies
-    uint32_t fat_sector = f->reg.fat_sector_start + sector_to_load;
+    // write to all FAT copies
+    uint32_t fat_sector = f->reg.fat_sector_start + sector_to_update;
     for (uint8_t i = 0; i < f->reg.number_of_fats; ++i) {
         TRY_IO(write_sector(f, fat_sector))
         fat_sector += f->reg.fat_size_sectors;
@@ -233,22 +238,21 @@ static FFatResult fat_update_data_cluster_ptr(FFat32* f, uint32_t cluster, uint3
 }
 
 // Find the first free cluster on FAT.
-static FFatResult fat_find_first_free_cluster(FFat32* f, uint32_t start_at, uint32_t* first_free_cluster)
+static FFatResult fat_find_first_free_cluster(FFat32* f, uint32_t fat_cluster_start_at, uint32_t* first_free_cluster_number)
 {
-    uint32_t starting_sector = start_at / 128;
+    uint32_t starting_sector = fat_cluster_start_at / FAT_ENTRIES_PER_SECTOR;
     
-    // count free sectors on FAT
-    uint32_t pos = f->reg.fat_sector_start;
-    uint32_t count = starting_sector * 128;
-    for (uint32_t i = starting_sector; i < f->reg.fat_size_sectors; ++i) {
-        TRY_IO(load_sector(f, pos + i))
-        for (uint32_t j = 0; j < BYTES_PER_SECTOR / 4; ++j) {
-            uint32_t pointer = from_32(f->buffer, j * 4);
+    uint32_t current_cluster_number = starting_sector * FAT_ENTRIES_PER_SECTOR;
+    
+    for (uint32_t sector = starting_sector; sector < f->reg.fat_size_sectors; ++sector) {
+        TRY_IO(load_sector(f, f->reg.fat_sector_start + sector))
+        for (uint32_t fat_entry_ptr = 0; fat_entry_ptr < FAT_ENTRIES_PER_SECTOR; ++fat_entry_ptr) {
+            uint32_t pointer = from_32(f->buffer, fat_entry_ptr * sizeof(uint32_t));
             if (pointer == FAT_FREE) {
-                *first_free_cluster = count;
+                *first_free_cluster_number = current_cluster_number;
                 return F_OK;
             }
-            ++count;
+            ++current_cluster_number;
         }
     }
     
@@ -256,23 +260,24 @@ static FFatResult fat_find_first_free_cluster(FFat32* f, uint32_t start_at, uint
     return F_DEVICE_FULL;
 }
 
+// Create a new data cluster in the FAT.
 static FFatResult fat_append_cluster(FFat32* f, uint32_t continue_from_cluster, uint32_t* next_free_cluster)
 {
     // get next cluster from FSINFO
     FSInfo fs_info;
-    RETURN_UNLESS_F_OK(fsinfo_values(f, &fs_info))
+    RETURN_UNLESS_F_OK(fsinfo_get(f, &fs_info))
     
     // find next free cluster (cluster F)
-    RETURN_UNLESS_F_OK(fat_find_first_free_cluster(f, fs_info.last_used_cluster, next_free_cluster))
+    RETURN_UNLESS_F_OK(fat_find_first_free_cluster(f, fs_info.next_free_cluster, next_free_cluster))
     
     // point the previous cluster to cluster F
-    fat_update_data_cluster_ptr(f, continue_from_cluster, *next_free_cluster);
+    RETURN_UNLESS_F_OK(fat_update_data_cluster(f, continue_from_cluster, *next_free_cluster))
     
     // set the cluster F as EOC
-    fat_update_data_cluster_ptr(f, *next_free_cluster, FAT_EOC);
+    RETURN_UNLESS_F_OK(fat_update_data_cluster(f, *next_free_cluster, FAT_EOC))
     
     // update FSINFO
-    fs_info.last_used_cluster = *next_free_cluster;
+    fs_info.next_free_cluster = *next_free_cluster;
     RETURN_UNLESS_F_OK(fsinfo_update(f, &fs_info))
     
     return F_OK;
@@ -286,11 +291,13 @@ static FFatResult fat_append_cluster(FFat32* f, uint32_t continue_from_cluster, 
 
 // region ...
 
-typedef struct {
+typedef struct FDirResult {
     uint32_t   next_cluster;
     uint16_t   next_sector;
 } FDirResult;
 
+// Load directory entries sector into the buffer. If it returns F_MORE_DATA, it can be called again with continuation == F_CONTINUE
+// and the last returned `dir_result` to load the whole entry list until it returns F_OK.
 static FFatResult dir(FFat32* f, uint32_t dir_cluster, FContinuation continuation, uint32_t continue_on_cluster, uint16_t continue_on_sector, FDirResult* dir_result)
 {
     uint32_t cluster;
@@ -310,7 +317,7 @@ static FFatResult dir(FFat32* f, uint32_t dir_cluster, FContinuation continuatio
     // move to next cluster and/or sector
     uint32_t next_cluster, next_sector;
     if (sector >= (f->reg.sectors_per_cluster - 1U)) {
-        RETURN_UNLESS_F_OK(fat_data_cluster_ptr(f, cluster, &next_cluster))
+        RETURN_UNLESS_F_OK(fat_get_data_cluster(f, cluster, &next_cluster))
         next_sector = 0;
     } else {
         next_cluster = cluster;
@@ -338,6 +345,7 @@ static FFatResult dir(FFat32* f, uint32_t dir_cluster, FContinuation continuatio
     return result;
 }
 
+// Convert filename to FAT format.
 static void parse_filename(char result[11], char const* filename, size_t filename_sz)
 {
     memset(result, ' ', FILENAME_SZ);
@@ -363,26 +371,25 @@ static void parse_filename(char result[11], char const* filename, size_t filenam
     }
 }
 
-// Search a directory entry sector for a file, and return its data file_data_cluster if found.
-static FFatResult find_file_cluster_in_dir_entry(FFat32* f, const char* filename, uint32_t* file_data_cluster, uint16_t* file_entry_ptr)
+// Search a directory entry sector for a file, and return its data cluster if found.
+static FFatResult find_file_cluster_in_dir_entries_sector(FFat32* f, const char* filename, uint32_t* data_cluster, uint16_t* file_entry_ptr_in_dir)
 {
-    for (uint16_t i = 0; i < (BYTES_PER_SECTOR / DIR_ENTRY_SZ); ++i) {   // iterate through each entry
-        uint16_t addr = i * DIR_ENTRY_SZ;
+    for (uint16_t entry_number = 0; entry_number < (BYTES_PER_SECTOR / DIR_ENTRY_SZ); ++entry_number) {   // iterate through each entry
+        uint16_t entry_ptr = entry_number * DIR_ENTRY_SZ;
         
-        if (f->buffer[addr + DIR_FILENAME] == 0)  // no more files
+        if (f->buffer[entry_ptr + DIR_FILENAME] == 0)  // no more files
             break;
         
-        uint8_t attr = f->buffer[addr + DIR_ATTR];   // attribute should be 0x10 (directory)
+        uint8_t attr = f->buffer[entry_ptr + DIR_ATTR];   // attribute should be 0x10 (directory)
         
         // if file/directory is found
         if (((attr & ATTR_DIR) || (attr & ATTR_ARCHIVE))
-            && strncmp(filename, (const char *) &f->buffer[addr + DIR_FILENAME], FILENAME_SZ) == 0) {
+            && strncmp(filename, (const char *) &f->buffer[entry_ptr + DIR_FILENAME], FILENAME_SZ) == 0) {
             
-            // return file/directory file_data_cluster
-            if (file_entry_ptr)
-                *file_entry_ptr = addr;
-            *file_data_cluster = *(uint16_t *) &f->buffer[addr + DIR_CLUSTER_LOW]
-                                 | ((uint32_t) (*(uint16_t *) &f->buffer[addr + DIR_CLUSTER_HIGH]) << 8);
+            // return file/directory data_cluster
+            if (file_entry_ptr_in_dir)
+                *file_entry_ptr_in_dir = entry_ptr;
+            *data_cluster = from_16(f->buffer, entry_ptr + DIR_CLUSTER_LOW) | ((uint32_t) from_16(f->buffer, entry_ptr + DIR_CLUSTER_HIGH) << 8);
             return F_OK;
         }
     }
@@ -391,7 +398,8 @@ static FFatResult find_file_cluster_in_dir_entry(FFat32* f, const char* filename
 }
 
 // Load cluster containing dir entries from a specific directory cluster and try to find the entry with the specific filename.
-static FFatResult find_file_cluster_in_dir_cluster(FFat32* f, const char* filename, size_t filename_sz, uint32_t dir_entries_cluster, uint32_t* file_data_cluster, uint16_t* file_entry_ptr)
+static FFatResult find_file_cluster_in_dir_entries_cluster(FFat32* f, const char* filename, size_t filename_sz, uint32_t dir_entries_cluster,
+                                                           uint32_t* file_data_cluster, uint16_t* file_entry_ptr_in_dir)
 {
     // convert filename to FAT format
     char parsed_filename[FILENAME_SZ];
@@ -410,7 +418,7 @@ static FFatResult find_file_cluster_in_dir_cluster(FFat32* f, const char* filena
             return result;
         
         // iterate through files in directory sector
-        if (find_file_cluster_in_dir_entry(f, parsed_filename, file_data_cluster, file_entry_ptr) == F_OK)
+        if (find_file_cluster_in_dir_entries_sector(f, parsed_filename, file_data_cluster, file_entry_ptr_in_dir) == F_OK)
             return F_OK;
         
         continuation = F_CONTINUE;  // in next fetch, continue the previous one
@@ -421,8 +429,8 @@ static FFatResult find_file_cluster_in_dir_cluster(FFat32* f, const char* filena
     return F_PATH_NOT_FOUND;
 }
 
-// Crawl directories until if finds the data index cluster for a given path.
-static FFatResult find_path_cluster(FFat32* f, const char* path, uint32_t* cluster, uint16_t* file_struct_ptr)
+// Crawl directories until it finds the data index cluster_number for a given path.
+static FFatResult find_path_cluster_number(FFat32* f, const char* path, uint32_t* cluster_number, uint16_t* file_entry_ptr_in_dir)
 {
     // copy file path to a global variable, so we can change it
     size_t len = strlen(path);
@@ -431,7 +439,7 @@ static FFatResult find_path_cluster(FFat32* f, const char* path, uint32_t* clust
     strcpy(global_file_path, path);
     char* file = global_file_path;
     
-    // find starting cluster
+    // find starting cluster_number
     uint32_t current_cluster;
     if (file[0] == '/') {   // absolute path
         current_cluster = f->reg.root_dir_cluster;
@@ -444,21 +452,21 @@ static FFatResult find_path_cluster(FFat32* f, const char* path, uint32_t* clust
         
         len = strlen(file);   // is this the last directory?
         if (len == 0) {
-            if (cluster)
-                *cluster = current_cluster;
+            if (cluster_number)
+                *cluster_number = current_cluster;
             return F_OK;
         }
         
         char* end = strchr(file, '/');
         
-        if (end != NULL) {   // this is a directory: find dir cluster and continue crawling
-            RETURN_UNLESS_F_OK(find_file_cluster_in_dir_cluster(f, file, end - file, current_cluster, &current_cluster, file_struct_ptr))
+        if (end != NULL) {   // this is a directory: find dir cluster_number and continue crawling
+            RETURN_UNLESS_F_OK(find_file_cluster_in_dir_entries_cluster(f, file, end - file, current_cluster, &current_cluster, file_entry_ptr_in_dir))
             file = end + 1;  // skip to next
             
-        } else {  // this is the final file/dir in path: find cluster and return it
-            RETURN_UNLESS_F_OK(find_file_cluster_in_dir_cluster(f, file, len, current_cluster, &current_cluster, file_struct_ptr))
-            if (cluster)
-                *cluster = current_cluster;
+        } else {  // this is the final file/dir in path: find cluster_number and return it
+            RETURN_UNLESS_F_OK(find_file_cluster_in_dir_entries_cluster(f, file, len, current_cluster, &current_cluster, file_entry_ptr_in_dir))
+            if (cluster_number)
+                *cluster_number = current_cluster;
             return F_OK;
         }
     }
@@ -549,8 +557,8 @@ static FFatResult find_next_free_cluster(FFat32* f, uint32_t* next_free_cluster)
 static FFatResult find_next_free_directory_entry(FFat32* f, uint32_t path_cluster, FileEntry* file_entry)
 {
     *file_entry = (FileEntry) {
-            .cluster = path_cluster,
-            .sector = 0,
+            .cluster   = path_cluster,
+            .sector    = 0,
             .entry_ptr = 0,
     };
     
@@ -567,7 +575,7 @@ search_cluster:
     
     // if not found, go to next cluster until EOC
     uint32_t next_cluster;
-    RETURN_UNLESS_F_OK(fat_data_cluster_ptr(f, file_entry->cluster, &next_cluster))
+    RETURN_UNLESS_F_OK(fat_get_data_cluster(f, file_entry->cluster, &next_cluster))
     if (next_cluster != FAT_EOC && next_cluster != FAT_EOF) {
         file_entry->cluster = next_cluster;
         goto search_cluster;
@@ -577,18 +585,18 @@ search_cluster:
     return F_PATH_NOT_FOUND;
 }
 
-static FFatResult create_entry_in_directory(FFat32* f, uint32_t parent_dir_cluster, char filename[FILENAME_SZ],
-                                         uint8_t attrib, uint16_t fat_datetime, uint32_t file_content_cluster)
+static FFatResult create_entry_in_directory(FFat32* f, uint32_t parent_dir_data_cluster, char filename[FILENAME_SZ],
+                                            uint8_t attrib, uint16_t fat_datetime, uint32_t data_cluster)
 {
     // find next free directory entry
     FileEntry file_entry;
-    FFatResult result = find_next_free_directory_entry(f, parent_dir_cluster, &file_entry);
+    FFatResult result = find_next_free_directory_entry(f, parent_dir_data_cluster, &file_entry);
     
     // if no directory free entry, append cluster
     if (result == F_PATH_NOT_FOUND) {
-        RETURN_UNLESS_F_OK(fat_append_cluster(f, parent_dir_cluster, &parent_dir_cluster))
+        RETURN_UNLESS_F_OK(fat_append_cluster(f, parent_dir_data_cluster, &parent_dir_data_cluster))
         file_entry = (FileEntry) {
-            .cluster = parent_dir_cluster,
+            .cluster = parent_dir_data_cluster,
             .sector = 0,
             .entry_ptr = 0,
         };
@@ -604,9 +612,9 @@ static FFatResult create_entry_in_directory(FFat32* f, uint32_t parent_dir_clust
             .time_tenth = 0,
             .crt_datetime = fat_datetime,
             .last_acc_time = fat_datetime & 0xff,
-            .cluster_high = (file_content_cluster >> 8),
+            .cluster_high = (data_cluster >> 8),
             .wrt_datetime = fat_datetime,
-            .cluster_low = file_content_cluster & 0xff,
+            .cluster_low = data_cluster & 0xff,
             .file_size = 0
     };
     memcpy(dir_entry.name, filename, FILENAME_SZ);
@@ -633,7 +641,7 @@ static FFatResult create_file_entry(FFat32* f, char* file_path, uint8_t attrib, 
     char filename[FILENAME_SZ];
     split_path_and_filename(file_path, filename);
     uint32_t cluster;
-    RETURN_UNLESS_F_OK(find_path_cluster(f, file_path, &cluster, NULL))
+    RETURN_UNLESS_F_OK(find_path_cluster_number(f, file_path, &cluster, NULL))
     *parent_dir = cluster;
     
     if (!validate_filename(filename))
@@ -641,7 +649,7 @@ static FFatResult create_file_entry(FFat32* f, char* file_path, uint8_t attrib, 
     
     // create a new cluster
     RETURN_UNLESS_F_OK(find_next_free_cluster(f, data_cluster))
-    RETURN_UNLESS_F_OK(fat_update_data_cluster_ptr(f, *data_cluster, FAT_EOF))
+    RETURN_UNLESS_F_OK(fat_update_data_cluster(f, *data_cluster, FAT_EOF))
     
     // create directory entry in parent directory
     RETURN_UNLESS_F_OK(create_entry_in_directory(f, cluster, filename, attrib, fat_datetime, *data_cluster))
@@ -663,7 +671,7 @@ static FFatResult create_file_entry(FFat32* f, char* file_path, uint8_t attrib, 
 static FFatResult f_init(FFat32* f)
 {
     // check partition location
-    if (!f->read(MBR, f->buffer, f->data))
+    if (!f->read(MBR_SECTOR, f->buffer, f->data))
         return F_IO_ERROR;
     if (f->buffer[0] == 0xeb) {  // this is a FAT partition
         f->reg.partition_start = 0;
@@ -683,7 +691,7 @@ static FFatResult f_init(FFat32* f)
     
     f->reg.number_of_fats = f->buffer[BPB_NUMBER_OF_FATS];
     uint32_t root_dir_sector = reserved_sectors + (f->reg.number_of_fats * f->reg.fat_size_sectors);
-    f->reg.data_start_sector = root_dir_sector + f->reg.partition_start;
+    f->reg.data_sector_start = root_dir_sector + f->reg.partition_start;
     
     // check if bytes per sector is correct
     uint16_t bytes_per_sector = from_16(f->buffer, BPB_BYTES_PER_SECTOR);
@@ -715,7 +723,7 @@ static FFatResult f_init(FFat32* f)
 static FFatResult f_free_r(FFat32* f)
 {
     FSInfo fs_info;
-    RETURN_UNLESS_F_OK(fsinfo_recalculate_values(f, &fs_info))
+    RETURN_UNLESS_F_OK(fsinfo_recalculate(f, &fs_info))
     uint32_t total = fs_info.free_cluster_count;
     
     to_32(f->buffer, 0, total);
@@ -762,7 +770,7 @@ static FFatResult f_dir(FFat32* f)
 static FFatResult f_cd(FFat32* f)
 {
     uint32_t dir_cluster;
-    RETURN_UNLESS_F_OK(find_path_cluster(f, (const char*) f->buffer, &dir_cluster, NULL))
+    RETURN_UNLESS_F_OK(find_path_cluster_number(f, (const char*) f->buffer, &dir_cluster, NULL))
     f->reg.current_dir_cluster = dir_cluster;
     return F_OK;
 }
@@ -797,7 +805,7 @@ static FFatResult f_mkdir(FFat32* f, uint32_t fat_datetime)
 static FFatResult f_stat(FFat32* f)
 {
     uint16_t addr;
-    RETURN_UNLESS_F_OK(find_path_cluster(f, (const char*) f->buffer, NULL, &addr))
+    RETURN_UNLESS_F_OK(find_path_cluster_number(f, (const char*) f->buffer, NULL, &addr))
     
     // set first 32 bits to file stat
     if (addr != 0)
