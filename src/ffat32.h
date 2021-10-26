@@ -6,12 +6,12 @@
 
 typedef enum FFat32Op {
     // initialization
-    F_INIT    = 0x00,
+    F_INIT           = 0x00,
+    F_FSINFO_RECALC  = 0x01,
     
     // disk operations
     F_FREE    = 0x10,
-    F_FREE_R  = 0x11,
-    F_BOOT    = 0x12,
+    F_BOOT    = 0x11,
 
     // directory operations
     F_DIR     = 0x20,
