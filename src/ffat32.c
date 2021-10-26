@@ -377,7 +377,7 @@ typedef struct FPathLocation {
 } FPathLocation;
 
 // Search a directory entry sector for a file, and return its data cluster if found.
-static FFatResult find_file_cluster_in_dir_entries_sector(FFat32* f, const char* filename, uint32_t* data_cluster, uint16_t* file_entry_ptr_in_dir)
+static FFatResult find_file_cluster_in_dir_entries_sector(FFat32* f, const char* filename, FPathLocation* path_location)
 {
     for (uint16_t entry_number = 0; entry_number < (BYTES_PER_SECTOR / DIR_ENTRY_SZ); ++entry_number) {   // iterate through each entry
         uint16_t entry_ptr = entry_number * DIR_ENTRY_SZ;
@@ -392,9 +392,8 @@ static FFatResult find_file_cluster_in_dir_entries_sector(FFat32* f, const char*
             && strncmp(filename, (const char *) &f->buffer[entry_ptr + DIR_FILENAME], FILENAME_SZ) == 0) {
             
             // return file/directory data_cluster
-            if (file_entry_ptr_in_dir)
-                *file_entry_ptr_in_dir = entry_ptr;
-            *data_cluster = from_16(f->buffer, entry_ptr + DIR_CLUSTER_LOW) | ((uint32_t) from_16(f->buffer, entry_ptr + DIR_CLUSTER_HIGH) << 8);
+            path_location->file_entry_in_parent_dir = entry_ptr;
+            path_location->data_cluster = from_16(f->buffer, entry_ptr + DIR_CLUSTER_LOW) | ((uint32_t) from_16(f->buffer, entry_ptr + DIR_CLUSTER_HIGH) << 8);
             return F_OK;
         }
     }
@@ -404,7 +403,7 @@ static FFatResult find_file_cluster_in_dir_entries_sector(FFat32* f, const char*
 
 // Load cluster containing dir entries from a specific directory cluster and try to find the entry with the specific filename.
 static FFatResult find_file_cluster_in_dir_entries_cluster(FFat32* f, const char* filename, size_t filename_sz, uint32_t dir_entries_cluster,
-                                                           uint32_t* file_data_cluster, uint16_t* file_entry_ptr_in_dir)
+                                                           FPathLocation* path_location)
 {
     // convert filename to FAT format
     char parsed_filename[FILENAME_SZ];
@@ -423,8 +422,9 @@ static FFatResult find_file_cluster_in_dir_entries_cluster(FFat32* f, const char
             return result;
         
         // iterate through files in directory sector
-        if (find_file_cluster_in_dir_entries_sector(f, parsed_filename, file_data_cluster, file_entry_ptr_in_dir) == F_OK)
+        if (find_file_cluster_in_dir_entries_sector(f, parsed_filename, path_location) == F_OK) {
             return F_OK;
+        }
         
         continuation = F_CONTINUE;  // in next fetch, continue the previous one
         
@@ -463,16 +463,13 @@ static FFatResult find_path_location(FFat32* f, const char* path, FPathLocation*
         
         char* end = strchr(file, '/');
         
-        uint16_t file_entry_ptr_in_dir;
         if (end != NULL) {   // this is a directory: find dir cluster_number and continue crawling
-            RETURN_UNLESS_F_OK(find_file_cluster_in_dir_entries_cluster(f, file, end - file, current_cluster, &current_cluster, &file_entry_ptr_in_dir))
-            path_location->file_entry_in_parent_dir = file_entry_ptr_in_dir;
+            RETURN_UNLESS_F_OK(find_file_cluster_in_dir_entries_cluster(f, file, end - file, current_cluster, path_location))
+            current_cluster = path_location->data_cluster;
             file = end + 1;  // skip to next
             
         } else {  // this is the final file/dir in path: find cluster_number and return it
-            RETURN_UNLESS_F_OK(find_file_cluster_in_dir_entries_cluster(f, file, len, current_cluster, &current_cluster, &file_entry_ptr_in_dir))
-            path_location->data_cluster = current_cluster;
-            path_location->file_entry_in_parent_dir = file_entry_ptr_in_dir;
+            RETURN_UNLESS_F_OK(find_file_cluster_in_dir_entries_cluster(f, file, len, current_cluster, path_location))
             return F_OK;
         }
     }
