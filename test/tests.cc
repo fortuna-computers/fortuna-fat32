@@ -18,7 +18,7 @@ std::vector<Test> prepare_tests()
     //
     // DISK OPERATIONS
     //
-    
+
     // region ...
     tests.emplace_back(
             "Check disk space (pre-existing)",

@@ -56,7 +56,7 @@ static char global_file_path[MAX_FILE_PATH];
 #define ATTR_DIR     0x10
 #define ATTR_ARCHIVE 0x20
 
-#define RETURN_UNLESS_F_OK(expr) { if ((expr) != F_OK) return expr; }
+#define RETURN_UNLESS_F_OK(expr) { FFatResult r = (expr); if (r != F_OK) return r; }
 #define IO(expr) { if (!(expr)) return F_IO_ERROR; }
 
 
@@ -361,8 +361,8 @@ static void parse_filename(char result[11], char const* filename, size_t filenam
     }
 }
 
-// Search a directory entry sector for a file, and return its data data_cluster if found.
-static FFatResult find_file_cluster_in_dir_entry(FFat32* f, const char* filename, uint32_t* data_cluster, uint16_t* file_entry_ptr)
+// Search a directory entry sector for a file, and return its data file_data_cluster if found.
+static FFatResult find_file_cluster_in_dir_entry(FFat32* f, const char* filename, uint32_t* file_data_cluster, uint16_t* file_entry_ptr)
 {
     for (uint16_t i = 0; i < (BYTES_PER_SECTOR / DIR_ENTRY_SZ); ++i) {   // iterate through each entry
         uint16_t addr = i * DIR_ENTRY_SZ;
@@ -376,11 +376,11 @@ static FFatResult find_file_cluster_in_dir_entry(FFat32* f, const char* filename
         if (((attr & ATTR_DIR) || (attr & ATTR_ARCHIVE))
             && strncmp(filename, (const char *) &f->buffer[addr + DIR_FILENAME], FILENAME_SZ) == 0) {
             
-            // return file/directory data_cluster
+            // return file/directory file_data_cluster
             if (file_entry_ptr)
                 *file_entry_ptr = addr;
-            *data_cluster = *(uint16_t *) &f->buffer[addr + DIR_CLUSTER_LOW]
-                            | ((uint32_t) (*(uint16_t *) &f->buffer[addr + DIR_CLUSTER_HIGH]) << 8);
+            *file_data_cluster = *(uint16_t *) &f->buffer[addr + DIR_CLUSTER_LOW]
+                                 | ((uint32_t) (*(uint16_t *) &f->buffer[addr + DIR_CLUSTER_HIGH]) << 8);
             return F_OK;
         }
     }
@@ -389,7 +389,7 @@ static FFatResult find_file_cluster_in_dir_entry(FFat32* f, const char* filename
 }
 
 // Load cluster containing dir entries from a specific directory cluster and try to find the entry with the specific filename.
-static int64_t find_file_cluster_in_dir_cluster(FFat32* f, const char* filename, size_t filename_sz, uint32_t dir_entries_cluster, uint16_t* file_entry_ptr)
+static FFatResult find_file_cluster_in_dir_cluster(FFat32* f, const char* filename, size_t filename_sz, uint32_t dir_entries_cluster, uint32_t* file_data_cluster, uint16_t* file_entry_ptr)
 {
     // convert filename to FAT format
     char parsed_filename[FILENAME_SZ];
@@ -405,33 +405,32 @@ static int64_t find_file_cluster_in_dir_cluster(FFat32* f, const char* filename,
         // read directory
         result = dir(f, dir_entries_cluster, continuation, dir_result.next_cluster, dir_result.next_sector, &dir_result);
         if (result != F_OK && result != F_MORE_DATA)
-            return -result;
+            return result;
         
         // iterate through files in directory sector
-        uint32_t cluster;
-        if (find_file_cluster_in_dir_entry(f, parsed_filename, &cluster, file_entry_ptr) == F_OK)
-            return cluster;
+        if (find_file_cluster_in_dir_entry(f, parsed_filename, file_data_cluster, file_entry_ptr) == F_OK)
+            return F_OK;
         
         continuation = F_CONTINUE;  // in next fetch, continue the previous one
         
     } while (result == F_MORE_DATA);   // if that was the last sector in the directory cluster containing files, exit loop
     
     // the directory was not found
-    return -F_INEXISTENT_FILE_OR_DIR;
+    return F_INEXISTENT_FILE_OR_DIR;
 }
 
 // Crawl directories until if finds the data index cluster for a given path.
-static int64_t find_path_cluster(FFat32* f, const char* path, uint16_t* file_struct_ptr)
+static FFatResult find_path_cluster(FFat32* f, const char* path, uint32_t* cluster, uint16_t* file_struct_ptr)
 {
     // copy file path to a global variable, so we can change it
     size_t len = strlen(path);
     if (len >= MAX_FILE_PATH)
-        return -F_FILE_PATH_TOO_LONG;
+        return F_FILE_PATH_TOO_LONG;
     strcpy(global_file_path, path);   // TODO - do we really need the global?
     char* file = global_file_path;
     
     // find starting cluster
-    int64_t current_cluster;
+    uint32_t current_cluster;
     if (file[0] == '/') {   // absolute path
         current_cluster = f->reg.root_dir_cluster;
         ++file;  // skip intitial '/'
@@ -442,19 +441,29 @@ static int64_t find_path_cluster(FFat32* f, const char* path, uint16_t* file_str
     while (1) {   // each iteration will crawl one directory
         
         len = strlen(file);   // is this the last directory?
-        if (len == 0)
-            return current_cluster;
+        if (len == 0) {
+            if (cluster)
+                *cluster = current_cluster;
+            return F_OK;
+        }
         
         char* end = strchr(file, '/');
         
         if (end != NULL) {   // this is a directory: find dir cluster and continue crawling
-            current_cluster = find_file_cluster_in_dir_cluster(f, file, end - file, current_cluster, file_struct_ptr);
-            if (current_cluster < 0)   // file not found
-                return current_cluster;
+            FFatResult result = find_file_cluster_in_dir_cluster(f, file, end - file, current_cluster, &current_cluster, file_struct_ptr);
+            if (result != F_OK)
+                return result;
             file = end + 1;  // skip to next
             
         } else {  // this is the final file/dir in path: find cluster and return it
-            return find_file_cluster_in_dir_cluster(f, file, len, current_cluster, file_struct_ptr);
+            FFatResult result = find_file_cluster_in_dir_cluster(f, file, len, current_cluster, &current_cluster, file_struct_ptr);
+            if (result != F_OK) {
+                return result;
+            } else {
+                if (cluster)
+                    *cluster = current_cluster;
+                return F_OK;
+            }
         }
     }
 }
@@ -628,10 +637,11 @@ static int64_t create_file_entry(FFat32* f, char* file_path, uint8_t attrib, uin
     // parse filename and find parent directory cluster
     char filename[FILENAME_SZ];
     split_path_and_filename(file_path, filename);
-    int64_t path_cluster = find_path_cluster(f, file_path, NULL);
-    if (path_cluster < 0)
-        return path_cluster;
-    *parent_dir = path_cluster;
+    uint32_t cluster;
+    FFatResult result = find_path_cluster(f, file_path, &cluster, NULL);
+    if (result != F_OK)
+        return - (int64_t) result;
+    *parent_dir = cluster;
     
     if (!validate_filename(filename))
         return -F_INVALID_FILENAME;
@@ -644,7 +654,7 @@ static int64_t create_file_entry(FFat32* f, char* file_path, uint8_t attrib, uin
     
     // create directory entry in parent directory
     int64_t r;
-    if ((r = create_entry_in_directory(f, path_cluster, filename, attrib, fat_datetime, file_contents_cluster)) < 0)
+    if ((r = create_entry_in_directory(f, cluster, filename, attrib, fat_datetime, file_contents_cluster)) < 0)
         return -r;
     
     // update FSINFO
@@ -761,13 +771,10 @@ static FFatResult f_dir(FFat32* f)
 
 static FFatResult f_cd(FFat32* f)
 {
-    int64_t cluster = find_path_cluster(f, (const char*) f->buffer, NULL);
-    if (cluster < 0) {
-        return cluster * (-1);
-    } else {
-        f->reg.current_dir_cluster = cluster;
-        return F_OK;
-    }
+    uint32_t dir_cluster;
+    RETURN_UNLESS_F_OK(find_path_cluster(f, (const char*) f->buffer, &dir_cluster, NULL))
+    f->reg.current_dir_cluster = dir_cluster;
+    return F_OK;
 }
 
 static FFatResult f_mkdir(FFat32* f, uint32_t fat_datetime)
@@ -801,9 +808,7 @@ static FFatResult f_mkdir(FFat32* f, uint32_t fat_datetime)
 static FFatResult f_stat(FFat32* f)
 {
     uint16_t addr;
-    int64_t cluster = find_path_cluster(f, (const char*) f->buffer, &addr);
-    if (cluster < 0)
-        return -cluster;
+    RETURN_UNLESS_F_OK(find_path_cluster(f, (const char*) f->buffer, NULL, &addr))
     
     // set first 32 bits to file stat
     if (addr != 0)

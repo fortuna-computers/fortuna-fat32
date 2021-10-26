@@ -17,7 +17,7 @@ std::vector<Scenario> Scenario::all_scenarios()
 {
     std::vector<Scenario> scenarios;
     
-    // scenarios.emplace_back("Standard disk with directories and files");
+    scenarios.emplace_back("Standard disk with directories and files");
     
     scenarios.emplace_back("Standard empty disk", 1, DiskState::Empty);
     
