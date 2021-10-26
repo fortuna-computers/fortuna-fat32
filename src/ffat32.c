@@ -32,11 +32,8 @@ static char global_file_path[MAX_FILE_PATH];
 #define BPB_TOTAL_SECTORS        0x20
 #define BPB_FAT_SIZE_SECTORS     0x24
 #define BPB_ROOT_DIR_CLUSTER     0x2c
-#define BPB_LABEL                0x47
 #define FSI_FREE_COUNT          0x1e8
 #define FSI_NEXT_FREE           0x1ec
-
-#define LABEL_SZ           11
 
 #define BYTES_PER_SECTOR  512
 #define DIR_ENTRY_SZ       32
@@ -59,16 +56,9 @@ static char global_file_path[MAX_FILE_PATH];
 #define ATTR_DIR     0x10
 #define ATTR_ARCHIVE 0x20
 
-#define min(a,b) \
-    ({ __typeof__ (a) _a = (a); \
-       __typeof__ (b) _b = (b); \
-     _a < _b ? _a : _b; })
-#define max(a,b) \
-    ({ __typeof__ (a) _a = (a); \
-       __typeof__ (b) _b = (b); \
-     _a > _b ? _a : _b; })
-
 #define RETURN_UNLESS_F_OK(expr) { if ((expr) != F_OK) return expr; }
+#define IO(expr) { if (!(expr)) return F_IO_ERROR; }
+
 
 /**********************/
 /*  DATA CONVERSION   */
@@ -120,8 +110,6 @@ static bool write_data_cluster(FFat32* f, uint32_t cluster, uint16_t sector)
 {
     return write_sector(f, (cluster - 2) * f->reg.sectors_per_cluster + f->reg.data_start_sector + sector - f->reg.partition_start);
 }
-
-#define IO(expr) { if (!expr) return F_IO_ERROR; }
 
 //endregion
 
@@ -373,25 +361,26 @@ static void parse_filename(char result[11], char const* filename, size_t filenam
     }
 }
 
-
-static bool find_file_cluster_in_dir_entry(FFat32* f, const char* parsed_filename, uint32_t* cluster, uint16_t* file_struct_ptr)
+// Search a directory entry sector for a file, and return its data data_cluster if found.
+static bool find_file_cluster_in_dir_entry(FFat32* f, const char* filename, uint32_t* data_cluster, uint16_t* file_entry_ptr)
 {
-    for (uint16_t i = 0; i < (BYTES_PER_SECTOR / DIR_ENTRY_SZ); ++i) {
+    for (uint16_t i = 0; i < (BYTES_PER_SECTOR / DIR_ENTRY_SZ); ++i) {   // iterate through each entry
         uint16_t addr = i * DIR_ENTRY_SZ;
+        
         if (f->buffer[addr + DIR_FILENAME] == 0)  // no more files
             break;
         
-        uint8_t attr = f->buffer[addr + DIR_ATTR];   // attribute should be 0x10
+        uint8_t attr = f->buffer[addr + DIR_ATTR];   // attribute should be 0x10 (directory)
         
         // if file/directory is found
         if (((attr & ATTR_DIR) || (attr & ATTR_ARCHIVE))
-            && strncmp(parsed_filename, (const char *) &f->buffer[addr + DIR_FILENAME], FILENAME_SZ) == 0) {
+            && strncmp(filename, (const char *) &f->buffer[addr + DIR_FILENAME], FILENAME_SZ) == 0) {
             
-            // return file/directory cluster
-            if (file_struct_ptr)
-                *file_struct_ptr = addr;
-            *cluster = *(uint16_t *) &f->buffer[addr + DIR_CLUSTER_LOW]
-                       | ((uint32_t) (*(uint16_t *) &f->buffer[addr + DIR_CLUSTER_HIGH]) << 8);
+            // return file/directory data_cluster
+            if (file_entry_ptr)
+                *file_entry_ptr = addr;
+            *data_cluster = *(uint16_t *) &f->buffer[addr + DIR_CLUSTER_LOW]
+                            | ((uint32_t) (*(uint16_t *) &f->buffer[addr + DIR_CLUSTER_HIGH]) << 8);
             return true;
         }
     }
@@ -399,9 +388,10 @@ static bool find_file_cluster_in_dir_entry(FFat32* f, const char* parsed_filenam
     return false;
 }
 
-// Load cluster containing dir entries from a specific directory cluster (sectory by sector).
-static int64_t find_file_cluster_in_dir_cluster(FFat32* f, const char* filename, size_t filename_sz, uint32_t start_at_cluster, uint16_t* file_struct_ptr)
+// Load cluster containing dir entries from a specific directory cluster and try to find the entry with the specific filename.
+static int64_t find_file_cluster_in_dir_cluster(FFat32* f, const char* filename, size_t filename_sz, uint32_t dir_entries_cluster, uint16_t* file_entry_ptr)
 {
+    // convert filename to FAT format
     char parsed_filename[FILENAME_SZ];
     parse_filename(parsed_filename, filename, filename_sz);
     
@@ -409,20 +399,22 @@ static int64_t find_file_cluster_in_dir_cluster(FFat32* f, const char* filename,
     FFatResult result;
     FDirResult dir_result = { 0, 0 };
     FContinuation continuation = F_START_OVER;
-    do {
+    
+    do {   // each iteration looks to one sector in the cluster
+        
         // read directory
-        result = dir(f, start_at_cluster, continuation, dir_result.next_cluster, dir_result.next_sector, &dir_result);
+        result = dir(f, dir_entries_cluster, continuation, dir_result.next_cluster, dir_result.next_sector, &dir_result);
         if (result != F_OK && result != F_MORE_DATA)
             return -result;
         
-        // iterate through returned files
+        // iterate through files in directory sector
         uint32_t cluster;
-        if (find_file_cluster_in_dir_entry(f, parsed_filename, &cluster, file_struct_ptr))
+        if (find_file_cluster_in_dir_entry(f, parsed_filename, &cluster, file_entry_ptr))
             return cluster;
         
         continuation = F_CONTINUE;  // in next fetch, continue the previous one
         
-    } while (result == F_MORE_DATA);
+    } while (result == F_MORE_DATA);   // if that was the last sector in the directory cluster containing files, exit loop
     
     // the directory was not found
     return -F_INEXISTENT_FILE_OR_DIR;
