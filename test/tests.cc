@@ -9,7 +9,6 @@
 
 static std::vector<File> directory;
 static FFatResult result;
-static uint32_t free_1st_check, free_2nd_check;
 
 std::vector<Test> prepare_tests()
 {
@@ -38,7 +37,8 @@ std::vector<Test> prepare_tests()
             "Check disk space (calculate)",
 
             [](FFat32* ffat, Scenario const&) {
-                f_fat32(ffat, F_FREE_R, 0);
+                f_fat32(ffat, F_FSINFO_RECALC, 0);
+                f_fat32(ffat, F_FREE, 0);
             },
 
             [](uint8_t const* buffer, Scenario const& scenario) {
@@ -47,23 +47,6 @@ std::vector<Test> prepare_tests()
                 return abs((int) free_ - (int) found) < 1024;
             }
     );
-
-    {
-        tests.emplace_back(
-                "Check disk space (calculate + read)",
-
-                [&](FFat32* ffat, Scenario const&) {
-                    f_fat32(ffat, F_FREE_R, 0);
-                    free_1st_check = *(uint32_t *) ffat->buffer;
-                    f_fat32(ffat, F_FREE, 0);
-                    free_2nd_check = *(uint32_t *) ffat->buffer;
-                },
-                
-                [&](uint8_t const*, Scenario const&) {
-                    return free_1st_check == free_2nd_check;
-                }
-        );
-    }
 
     tests.emplace_back(
             "Load boot sector",

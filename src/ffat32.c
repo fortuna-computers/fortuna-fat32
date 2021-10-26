@@ -720,14 +720,10 @@ static FFatResult f_init(FFat32* f)
 
 //region ...
 
-static FFatResult f_free_r(FFat32* f)
+static FFatResult f_fsinfo_recalc(FFat32* f)
 {
     FSInfo fs_info;
     RETURN_UNLESS_F_OK(fsinfo_recalculate(f, &fs_info))
-    uint32_t total = fs_info.free_cluster_count;
-    
-    to_32(f->buffer, 0, total);
-    
     return F_OK;
 }
 
@@ -736,7 +732,7 @@ static FFatResult f_free(FFat32* f)
     TRY_IO(load_sector(f, FSINFO_SECTOR))
     uint32_t free_ = from_32(f->buffer, FSI_FREE_COUNT);
     if (free_ == 0xffffffff)
-        f_free_r(f);
+        f_fsinfo_recalc(f);
     else
         to_32(f->buffer, 0, free_);
     
@@ -826,23 +822,22 @@ static FFatResult f_stat(FFat32* f)
 FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime)
 {
     switch (operation) {
-        case F_INIT:   f->reg.last_operation_result = f_init(f);   break;
-        case F_FREE:   f->reg.last_operation_result = f_free(f);   break;
-        case F_FREE_R: f->reg.last_operation_result = f_free_r(f); break;
-        case F_BOOT:   f->reg.last_operation_result = f_boot(f);   break;
-        case F_DIR:    f->reg.last_operation_result = f_dir(f);    break;
-        case F_CD:     f->reg.last_operation_result = f_cd(f);     break;
-        case F_MKDIR:  f->reg.last_operation_result = f_mkdir(f, fat_datetime); break;
-        case F_RMDIR:  break;
-        case F_OPEN:   break;
-        case F_CLOSE:  break;
-        case F_READ:   break;
-        case F_WRITE:  break;
-        case F_STAT:   f->reg.last_operation_result = f_stat(f);   break;
-        case F_RM:     break;
-        case F_MV:     break;
-        // TODO - find file
-        default: f->reg.last_operation_result = F_INCORRECT_OPERATION;
+        case F_INIT:          f->reg.last_operation_result = f_init(f);   break;
+        case F_FREE:          f->reg.last_operation_result = f_free(f);   break;
+        case F_FSINFO_RECALC: f->reg.last_operation_result = f_fsinfo_recalc(f); break;
+        case F_BOOT:          f->reg.last_operation_result = f_boot(f);   break;
+        case F_DIR:           f->reg.last_operation_result = f_dir(f);    break;
+        case F_CD:            f->reg.last_operation_result = f_cd(f);     break;
+        case F_MKDIR:         f->reg.last_operation_result = f_mkdir(f, fat_datetime); break;
+        case F_RMDIR:         break;
+        case F_OPEN:          break;
+        case F_CLOSE:         break;
+        case F_READ:          break;
+        case F_WRITE:         break;
+        case F_STAT:          f->reg.last_operation_result = f_stat(f);   break;
+        case F_RM:            break;
+        case F_MV:            break;
+        default:              f->reg.last_operation_result = F_INCORRECT_OPERATION;
     }
     return f->reg.last_operation_result;
 }
