@@ -789,6 +789,32 @@ static FFatResult f_mkdir(FFat32* f, uint32_t fat_datetime)
     return F_OK;
 }
 
+static FFatResult f_rmdir(FFat32* f)
+{
+    // find directory
+    uint32_t directory_cluster_number;
+    uint16_t dir_entry_ptr;
+    // TODO - find_path_cluster_number - return parent_dir cluster
+    RETURN_UNLESS_F_OK(find_path_cluster_number(f, (const char *) f->buffer, &directory_cluster_number, &dir_entry_ptr))
+    ;
+    
+    /*
+    // check if directory is empty
+    bool is_empty;
+    RETURN_UNLESS_F_OK(is_directory_empty(f, directory_cluster_number, &is_empty))
+    if (!is_empty)
+        return F_DIR_NOT_EMPTY;
+    
+    // go through linked list in FAT, removing all entries
+    // (at the same time, count the number of clusters)
+    uint32_t entry_count;
+    RETURN_UNLESS_F_OK(remove_file_from_fat(f, directory_cluster_number, &entry_count))
+     */
+    
+    // update directory entry in parent
+    
+    // update FSINFO
+}
 
 // endregion
 
@@ -829,7 +855,7 @@ FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime)
         case F_DIR:           f->reg.last_operation_result = f_dir(f);    break;
         case F_CD:            f->reg.last_operation_result = f_cd(f);     break;
         case F_MKDIR:         f->reg.last_operation_result = f_mkdir(f, fat_datetime); break;
-        case F_RMDIR:         break;
+        case F_RMDIR:         f->reg.last_operation_result = f_rmdir(f);  break;
         case F_OPEN:          break;
         case F_CLOSE:         break;
         case F_READ:          break;
