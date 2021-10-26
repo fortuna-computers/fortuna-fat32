@@ -522,29 +522,27 @@ static bool validate_filename(const char filename[FILENAME_SZ])
     return true;
 }
 
-static int64_t find_next_free_cluster(FFat32* f)
+static FFatResult find_next_free_cluster(FFat32* f, uint32_t* next_free_cluster)
 {
-    uint32_t cluster_ptr = 0;
-    
     // load next free cluster from FSINFO
     load_sector(f, FSINFO_SECTOR);
-    int64_t hint_next_free_cluster = from_32(f->buffer, FSI_NEXT_FREE);
+    uint32_t hint_next_free_cluster = from_32(f->buffer, FSI_NEXT_FREE);
     
     // check if value is valid
     bool recalculate = false;
     if (hint_next_free_cluster == FSI_NO_VALUE) {
         recalculate = true;
     } else {
-        FFatResult result = fat_find_first_free_cluster(f, hint_next_free_cluster, &cluster_ptr);
+        FFatResult result = fat_find_first_free_cluster(f, hint_next_free_cluster, next_free_cluster);
         if (result != F_OK)
             recalculate = true;
     }
     
     // recalculate next free cluster in FSINFO, if not valid
     if (recalculate)
-        RETURN_UNLESS_F_OK(fsinfo_recalculate_next_free_cluster(f, &cluster_ptr))
-    
-    return cluster_ptr;
+        RETURN_UNLESS_F_OK(fsinfo_recalculate_next_free_cluster(f, next_free_cluster))
+        
+    return F_OK;
 }
 
 static DirEntryPtr find_next_free_directory_entry(FFat32* f, uint32_t path_cluster)
@@ -641,9 +639,10 @@ static int64_t create_file_entry(FFat32* f, char* file_path, uint8_t attrib, uin
         return -F_INVALID_FILENAME;
     
     // create a new cluster
-    int64_t file_contents_cluster = find_next_free_cluster(f);
-    if (file_contents_cluster < 0)
-        return file_contents_cluster;
+    uint32_t file_contents_cluster;
+    result = find_next_free_cluster(f, &file_contents_cluster);
+    if (result != F_OK)
+        return - (int64_t) result;
     fat_update_data_cluster_ptr(f, file_contents_cluster, FAT_EOF);
     
     // create directory entry in parent directory
