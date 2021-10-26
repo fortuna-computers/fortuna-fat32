@@ -148,7 +148,7 @@ std::vector<Test> prepare_tests()
                     return true;
                     
                 } else {
-                    return result == F_INEXISTENT_FILE_OR_DIR;
+                    return result == F_PATH_NOT_FOUND;
                 }
             }
     );
@@ -174,7 +174,7 @@ std::vector<Test> prepare_tests()
                     return true;
         
                 } else {
-                    return result == F_INEXISTENT_FILE_OR_DIR;
+                    return result == F_PATH_NOT_FOUND;
                 }
             }
     );
@@ -204,7 +204,7 @@ std::vector<Test> prepare_tests()
                     return true;
                     
                 } else {
-                    return result == F_INEXISTENT_FILE_OR_DIR;
+                    return result == F_PATH_NOT_FOUND;
                 }
             }
     );
@@ -314,7 +314,7 @@ std::vector<Test> prepare_tests()
             },
             
             [&](uint8_t const* buffer, Scenario const& scenario) {
-                if (scenario.disk_state != Scenario::DiskState::Complete && result == F_INEXISTENT_FILE_OR_DIR)
+                if (scenario.disk_state != Scenario::DiskState::Complete && result == F_PATH_NOT_FOUND)
                     return true;
                 
                 if (result != F_OK)
@@ -333,7 +333,7 @@ std::vector<Test> prepare_tests()
             },
             
             [&](uint8_t const* buffer, Scenario const& scenario) {
-                if (scenario.disk_state != Scenario::DiskState::Complete && result == F_INEXISTENT_FILE_OR_DIR)
+                if (scenario.disk_state != Scenario::DiskState::Complete && result == F_PATH_NOT_FOUND)
                     return true;
                 
                 if (result != F_OK)
@@ -357,7 +357,7 @@ std::vector<Test> prepare_tests()
             },
             
             [&](uint8_t const* buffer, Scenario const& scenario) {
-                if (scenario.disk_state != Scenario::DiskState::Complete && result == F_INEXISTENT_FILE_OR_DIR)
+                if (scenario.disk_state != Scenario::DiskState::Complete && result == F_PATH_NOT_FOUND)
                     return true;
                 
                 if (result != F_OK)
