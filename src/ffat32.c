@@ -449,8 +449,8 @@ static int64_t find_path_cluster(FFat32* f, const char* path, uint16_t* file_str
         
         if (end != NULL) {   // this is a directory: find dir cluster and continue crawling
             current_cluster = find_file_cluster_in_dir_cluster(f, file, end - file, current_cluster, file_struct_ptr);
-            if (current_cluster == 0)   // file not found
-                return -F_INEXISTENT_FILE_OR_DIR;
+            if (current_cluster < 0)   // file not found
+                return current_cluster;
             file = end + 1;  // skip to next
             
         } else {  // this is the final file/dir in path: find cluster and return it
