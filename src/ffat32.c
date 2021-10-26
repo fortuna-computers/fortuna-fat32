@@ -373,6 +373,8 @@ static void parse_filename(char result[11], char const* filename, size_t filenam
 
 typedef struct FPathLocation {
     uint32_t data_cluster;
+    uint32_t parent_dir_cluster;
+    uint16_t parent_dir_sector;
     uint16_t file_entry_in_parent_dir;
 } FPathLocation;
 
@@ -421,10 +423,12 @@ static FFatResult find_file_cluster_in_dir_entries_cluster(FFat32* f, const char
         if (result != F_OK && result != F_MORE_DATA)
             return result;
         
+        path_location->parent_dir_cluster = dir_result.next_cluster;
+        path_location->parent_dir_sector = dir_result.next_sector;
+        
         // iterate through files in directory sector
-        if (find_file_cluster_in_dir_entries_sector(f, parsed_filename, path_location) == F_OK) {
+        if (find_file_cluster_in_dir_entries_sector(f, parsed_filename, path_location) == F_OK)
             return F_OK;
-        }
         
         continuation = F_CONTINUE;  // in next fetch, continue the previous one
         
