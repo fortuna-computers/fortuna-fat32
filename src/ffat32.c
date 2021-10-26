@@ -426,7 +426,7 @@ static FFatResult find_path_cluster(FFat32* f, const char* path, uint32_t* clust
     size_t len = strlen(path);
     if (len >= MAX_FILE_PATH)
         return F_FILE_PATH_TOO_LONG;
-    strcpy(global_file_path, path);   // TODO - do we really need the global?
+    strcpy(global_file_path, path);
     char* file = global_file_path;
     
     // find starting cluster
@@ -450,20 +450,14 @@ static FFatResult find_path_cluster(FFat32* f, const char* path, uint32_t* clust
         char* end = strchr(file, '/');
         
         if (end != NULL) {   // this is a directory: find dir cluster and continue crawling
-            FFatResult result = find_file_cluster_in_dir_cluster(f, file, end - file, current_cluster, &current_cluster, file_struct_ptr);
-            if (result != F_OK)
-                return result;
+            RETURN_UNLESS_F_OK(find_file_cluster_in_dir_cluster(f, file, end - file, current_cluster, &current_cluster, file_struct_ptr))
             file = end + 1;  // skip to next
             
         } else {  // this is the final file/dir in path: find cluster and return it
-            FFatResult result = find_file_cluster_in_dir_cluster(f, file, len, current_cluster, &current_cluster, file_struct_ptr);
-            if (result != F_OK) {
-                return result;
-            } else {
-                if (cluster)
-                    *cluster = current_cluster;
-                return F_OK;
-            }
+            RETURN_UNLESS_F_OK(find_file_cluster_in_dir_cluster(f, file, len, current_cluster, &current_cluster, file_struct_ptr))
+            if (cluster)
+                *cluster = current_cluster;
+            return F_OK;
         }
     }
 }
@@ -779,7 +773,7 @@ static FFatResult f_cd(FFat32* f)
 
 static FFatResult f_mkdir(FFat32* f, uint32_t fat_datetime)
 {
-    uint32_t parent_dir_cluster;
+    uint32_t parent_dir_cluster = 0;
     
     // create file entry
     int64_t cluster_self;
