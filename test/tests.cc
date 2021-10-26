@@ -18,7 +18,7 @@ std::vector<Test> prepare_tests()
     //
     // DISK OPERATIONS
     //
-    
+
     // region ...
     tests.emplace_back(
             "Check disk space (pre-existing)",
@@ -148,7 +148,7 @@ std::vector<Test> prepare_tests()
                     return true;
                     
                 } else {
-                    return result == F_INEXISTENT_FILE_OR_DIR;
+                    return result == F_PATH_NOT_FOUND;
                 }
             }
     );
@@ -174,7 +174,7 @@ std::vector<Test> prepare_tests()
                     return true;
         
                 } else {
-                    return result == F_INEXISTENT_FILE_OR_DIR;
+                    return result == F_PATH_NOT_FOUND;
                 }
             }
     );
@@ -204,7 +204,7 @@ std::vector<Test> prepare_tests()
                     return true;
                     
                 } else {
-                    return result == F_INEXISTENT_FILE_OR_DIR;
+                    return result == F_PATH_NOT_FOUND;
                 }
             }
     );
@@ -250,10 +250,9 @@ std::vector<Test> prepare_tests()
     tests.emplace_back(
             "Create dir at root",
 
-            [&](FFat32* f, Scenario const& scenario) {
+            [&](FFat32* f, Scenario const&) {
                 strcpy((char *) f->buffer, "TEST");
                 result = f_fat32(f, F_MKDIR, 1981);
-                scenario.store_image_in_disk("/tmp/0.img");
             },
 
             [&](uint8_t const*, Scenario const&) {
@@ -315,7 +314,7 @@ std::vector<Test> prepare_tests()
             },
             
             [&](uint8_t const* buffer, Scenario const& scenario) {
-                if (scenario.disk_state != Scenario::DiskState::Complete && result == F_INEXISTENT_FILE_OR_DIR)
+                if (scenario.disk_state != Scenario::DiskState::Complete && result == F_PATH_NOT_FOUND)
                     return true;
                 
                 if (result != F_OK)
@@ -334,7 +333,7 @@ std::vector<Test> prepare_tests()
             },
             
             [&](uint8_t const* buffer, Scenario const& scenario) {
-                if (scenario.disk_state != Scenario::DiskState::Complete && result == F_INEXISTENT_FILE_OR_DIR)
+                if (scenario.disk_state != Scenario::DiskState::Complete && result == F_PATH_NOT_FOUND)
                     return true;
                 
                 if (result != F_OK)
@@ -358,7 +357,7 @@ std::vector<Test> prepare_tests()
             },
             
             [&](uint8_t const* buffer, Scenario const& scenario) {
-                if (scenario.disk_state != Scenario::DiskState::Complete && result == F_INEXISTENT_FILE_OR_DIR)
+                if (scenario.disk_state != Scenario::DiskState::Complete && result == F_PATH_NOT_FOUND)
                     return true;
                 
                 if (result != F_OK)
@@ -385,6 +384,26 @@ std::vector<Test> prepare_tests()
     // TODO - move file
     
     // TODO - move directory
+    
+    //
+    // SPECIAL SITUATIONS
+    //
+    
+    tests.emplace_back(
+            "Device is returning I/O errors",
+            
+            [&](FFat32* f, Scenario const&) {
+                extern bool disk_ok;
+                disk_ok = false;
+                strcpy((char *) f->buffer, "TEST");
+                result = f_fat32(f, F_MKDIR, 1981);
+                disk_ok = true;
+            },
+            
+            [&](uint8_t const*, Scenario const&) {
+                return result == F_IO_ERROR;
+            }
+    );
     
     return tests;
 }
