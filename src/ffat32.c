@@ -51,8 +51,8 @@ static char global_file_path[MAX_FILE_PATH];
 #define DIR_CLUSTER_HIGH 0x14
 #define DIR_CLUSTER_LOW  0x1a
 
-#define DIR_ENTRY_FREE1  0x00
-#define DIR_ENTRY_FREE2  0xe5
+#define DIR_ENTRY_FREE    0x00
+#define DIR_ENTRY_UNUSED  0xe5
 
 #define ATTR_DIR         0x10
 #define ATTR_ARCHIVE     0x20
@@ -281,6 +281,12 @@ static FFatResult fat_append_cluster(FFat32* f, uint32_t continue_from_cluster, 
     RETURN_UNLESS_F_OK(fsinfo_update(f, &fs_info))
     
     return F_OK;
+}
+
+// Remove a file from FAT
+static FFatResult fat_remove_file(FFat32* f, uint32_t cluster_number, uint32_t* cluster_count)
+{
+    return F_OK;  // TODO
 }
 
 // endregion
@@ -575,7 +581,7 @@ search_cluster:
         TRY_IO(load_data_cluster(f, file_entry->cluster, file_entry->sector))
         for (file_entry->entry_ptr = 0; file_entry->entry_ptr < BYTES_PER_SECTOR; file_entry->entry_ptr += DIR_ENTRY_SZ) {
             uint8_t first_chr = f->buffer[file_entry->entry_ptr];
-            if (first_chr == DIR_ENTRY_FREE1 || first_chr == DIR_ENTRY_FREE2)
+            if (first_chr == DIR_ENTRY_FREE || first_chr == DIR_ENTRY_UNUSED)
                 return F_OK;
         }
     }
@@ -663,6 +669,40 @@ static FFatResult create_file_entry(FFat32* f, char* file_path, uint8_t attrib, 
     
     // update FSINFO
     RETURN_UNLESS_F_OK(update_fsinfo(f, *data_cluster, +1))
+    
+    return F_OK;
+}
+
+// endregion
+
+/*****************/
+/*  REMOVE FILE  */
+/*****************/
+
+// region ...
+
+static FFatResult mark_file_entry_as_removed(FFat32* f, FPathLocation const* path_location)
+{
+    // TODO
+    return F_OK;
+}
+
+static FFatResult remove_file(FFat32* f, FPathLocation const* path_location)
+{
+    // go through linked list in FAT, removing all entries
+    // (at the same time, count the number of clusters)
+    uint32_t cluster_count;
+    RETURN_UNLESS_F_OK(fat_remove_file(f, path_location->data_cluster, &cluster_count))
+    
+    // update directory entry in parent
+    RETURN_UNLESS_F_OK(mark_file_entry_as_removed(f, path_location))
+    
+    // update FSINFO
+    FSInfo fs_info;
+    RETURN_UNLESS_F_OK(fsinfo_get(f, &fs_info))
+    fs_info.next_free_cluster = path_location->data_cluster;
+    fs_info.free_cluster_count -= cluster_count;
+    RETURN_UNLESS_F_OK(fsinfo_update(f, &fs_info))
     
     return F_OK;
 }
@@ -760,6 +800,40 @@ static FFatResult f_boot(FFat32* f)
 
 // region ...
 
+static FFatResult is_directory_empty(FFat32* f, FPathLocation const* path_location, bool* is_empty)
+{
+    uint32_t count = 0;
+    FFatResult result;
+    FDirResult dir_result = { 0, 0 };
+    FContinuation continuation = F_START_OVER;
+    
+    do {   // each iteration looks to one sector in the cluster
+        
+        // read directory
+        result = dir(f, path_location->data_cluster, continuation, dir_result.next_cluster, dir_result.next_sector, &dir_result);
+        if (result != F_OK && result != F_MORE_DATA)
+            return result;
+        
+        // count entries in directory
+        for (uint16_t entry_number = 0; entry_number < (BYTES_PER_SECTOR / DIR_ENTRY_SZ); ++entry_number) {   // iterate through each entry
+            uint16_t entry_ptr = entry_number * DIR_ENTRY_SZ;
+        
+            uint8_t file_indicator = f->buffer[entry_ptr];
+            if (file_indicator == DIR_ENTRY_FREE)
+                break;
+            if (file_indicator == DIR_ENTRY_UNUSED)
+                continue;
+            
+            ++count;
+        }
+        
+        continuation = F_CONTINUE;  // in next fetch, continue the previous one
+        
+    } while (result == F_MORE_DATA);   // if that was the last sector in the directory cluster containing files, exit loop
+    
+    return count == 2;
+}
+
 static FFatResult f_dir(FFat32* f)
 {
     FDirResult dir_result;
@@ -801,24 +875,22 @@ static FFatResult f_rmdir(FFat32* f)
     // find directory
     FPathLocation path_location;
     RETURN_UNLESS_F_OK(find_path_location(f, (const char *) f->buffer, &path_location))
-    ;
     
-    /*
+    // check if "file" is directory
+    uint8_t attr = f->buffer[path_location.file_entry_in_parent_dir + DIR_ATTR];    // buffer already contains the dir entry
+    if (!(attr & ATTR_DIR))
+        return F_NOT_A_DIRECTORY;
+    
     // check if directory is empty
     bool is_empty;
-    RETURN_UNLESS_F_OK(is_directory_empty(f, directory_cluster_number, &is_empty))
+    RETURN_UNLESS_F_OK(is_directory_empty(f, &path_location, &is_empty))
     if (!is_empty)
         return F_DIR_NOT_EMPTY;
     
-    // go through linked list in FAT, removing all entries
-    // (at the same time, count the number of clusters)
-    uint32_t entry_count;
-    RETURN_UNLESS_F_OK(remove_file_from_fat(f, directory_cluster_number, &entry_count))
-     */
+    // remove directory "file"
+    RETURN_UNLESS_F_OK(remove_file(f, &path_location))
     
-    // update directory entry in parent
-    
-    // update FSINFO
+    return F_OK;
 }
 
 // endregion
