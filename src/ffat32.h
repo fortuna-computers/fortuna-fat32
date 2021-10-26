@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef enum {
+typedef enum FFat32Op {
     // initialization
     F_INIT    = 0x00,
     
@@ -31,7 +31,7 @@ typedef enum {
     F_MV      = 0x42,
 } FFat32Op;
 
-typedef enum {
+typedef enum FFatResult {
     F_OK                        = 0x0,
     F_MORE_DATA                 = 0x1,  // operation went OK but there's more data to fetch/save
     F_IO_ERROR                  = 0x2,  // the disk could not be accessed for some reason (error in read/write callbacks)
@@ -44,12 +44,12 @@ typedef enum {
     F_DEVICE_FULL               = 0x9,  // no space left on device
 } FFatResult;
 
-typedef enum {
+typedef enum FContinuation {
     F_START_OVER = 0,
     F_CONTINUE   = 1,
 } FContinuation;
 
-typedef struct {
+typedef struct FFatRegisters {
     FFatResult last_operation_result : 8;
     uint8_t    sectors_per_cluster;
     uint8_t    number_of_fats;
@@ -58,7 +58,7 @@ typedef struct {
     uint32_t   partition_start;
     uint32_t   fat_sector_start;
     uint32_t   fat_size_sectors;
-    uint32_t   data_start_sector;
+    uint32_t   data_sector_start;
     uint32_t   root_dir_cluster;
     uint32_t   current_dir_cluster;
     
