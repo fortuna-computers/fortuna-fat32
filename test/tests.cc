@@ -350,6 +350,110 @@ std::vector<Test> prepare_tests()
             }
     );
     
+    tests.emplace_back(
+            "Remove a existing directory (absolute)",
+
+            [&](FFat32* ffat, Scenario const&) {
+                strcpy(reinterpret_cast<char*>(ffat->buffer), "/HELLO/FORTUNA");
+                result = f_fat32(ffat, F_RMDIR, 0);
+            },
+
+            [&](uint8_t const* buffer, Scenario const& scenario) {
+                if (scenario.disk_state != Scenario::DiskState::Complete && result == F_PATH_NOT_FOUND)
+                    return true;
+    
+                if (result != F_OK)
+                    return false;
+    
+                FILINFO filinfo;
+                return f_stat("/HELLO/FORTUNA", &filinfo) == FR_NO_FILE;
+            }
+    );
+    
+    tests.emplace_back(
+            "Remove a existing directory (relative)",
+            
+            [&](FFat32* ffat, Scenario const&) {
+                strcpy(reinterpret_cast<char*>(ffat->buffer), "HELLO");
+                result = f_fat32(ffat, F_CD, 0);
+                strcpy(reinterpret_cast<char*>(ffat->buffer), "FORTUNA");
+                result = f_fat32(ffat, F_RMDIR, 0);
+            },
+            
+            [&](uint8_t const* buffer, Scenario const& scenario) {
+                if (scenario.disk_state != Scenario::DiskState::Complete && result == F_PATH_NOT_FOUND)
+                    return true;
+    
+                if (result != F_OK)
+                    return false;
+    
+                FILINFO filinfo;
+                return f_stat("/HELLO/FORTUNA", &filinfo) == FR_NO_FILE;
+            }
+    );
+    
+    tests.emplace_back(
+            "Forbid removal of a non-empty directory",
+            
+            [&](FFat32* ffat, Scenario const&) {
+                strcpy(reinterpret_cast<char*>(ffat->buffer), "/HELLO/FORTUNA");
+                result = f_fat32(ffat, F_RMDIR, 0);
+            },
+            
+            [&](uint8_t const* buffer, Scenario const& scenario) {
+                if (scenario.disk_state != Scenario::DiskState::Complete && result == F_PATH_NOT_FOUND)
+                    return true;
+    
+                return result == F_DIR_NOT_EMPTY;
+            }
+    );
+    
+    tests.emplace_back(
+            "Create and remove a directory",
+            
+            [&](FFat32* ffat, Scenario const&) {
+                strcpy(reinterpret_cast<char*>(ffat->buffer), "/TEMP");
+                f_fat32(ffat, F_MKDIR, 0);
+                strcpy(reinterpret_cast<char*>(ffat->buffer), "/TEMP");
+                result = f_fat32(ffat, F_RMDIR, 0);
+            },
+            
+            [&](uint8_t const* buffer, Scenario const& scenario) {
+                if (scenario.disk_state != Scenario::DiskState::Complete && result == F_PATH_NOT_FOUND)
+                    return true;
+    
+                if (result != F_OK)
+                    return false;
+    
+                FILINFO filinfo;
+                return f_stat("/TEMP", &filinfo) == FR_NO_FILE;
+            }
+    );
+    
+    tests.emplace_back(
+            "Create, remove and recreate directory",
+            
+            [&](FFat32* ffat, Scenario const&) {
+                strcpy(reinterpret_cast<char*>(ffat->buffer), "/TEMP");
+                f_fat32(ffat, F_MKDIR, 0);
+                strcpy(reinterpret_cast<char*>(ffat->buffer), "/TEMP");
+                result = f_fat32(ffat, F_RMDIR, 0);
+                strcpy(reinterpret_cast<char*>(ffat->buffer), "/TEMP");
+                f_fat32(ffat, F_MKDIR, 0);
+            },
+            
+            [&](uint8_t const* buffer, Scenario const& scenario) {
+                if (scenario.disk_state != Scenario::DiskState::Complete && result == F_PATH_NOT_FOUND)
+                    return true;
+    
+                if (result != F_OK)
+                    return false;
+    
+                FILINFO filinfo;
+                return f_stat("/TEMP", &filinfo) == FR_OK;
+            }
+    );
+    
     // endregion
     
     //

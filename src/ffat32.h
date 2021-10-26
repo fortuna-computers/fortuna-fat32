@@ -42,6 +42,7 @@ typedef enum FFatResult {
     F_FILE_PATH_TOO_LONG        = 0x7,  // file path larger that 127
     F_INVALID_FILENAME          = 0x8,  // filename contains an invalid character
     F_DEVICE_FULL               = 0x9,  // no space left on device
+    F_DIR_NOT_EMPTY             = 0xa,  // trying to remove a non-empty directory
 } FFatResult;
 
 typedef enum FContinuation {
