@@ -1,5 +1,7 @@
 #include "file.h"
 
+#include <string.h>
+
 #include "common.h"
 #include "io.h"
 #include "sections.h"
@@ -24,7 +26,18 @@ FFatResult file_list_dir(FFat32* f, uint32_t initial_cluster, FContinuation cont
         next_cluster = initial_cluster;
         next_sector = 0;
     }
-    TRY(sections_load_data_cluster(f, next_cluster, next_sector))
+    if (next_cluster == FAT_EOF || next_cluster == FAT_EOC) {
+        memset(f->buffer, 0, 512);
+        return F_OK;
+    }
+    
+    // since the directory continues in the next sector, store the next sector/cluster and return F_MORE_DATA
+    uint32_t cluster = next_cluster;
+    uint16_t sector = next_sector;
+    TRY(sections_fat_calculate_next_cluster_sector(f, &next_cluster, &next_sector))
+    
+    // load the cluster
+    TRY(sections_load_data_cluster(f, cluster, sector))
     
     // check if directory ends in this sector
     FDirEntry* dir_entry = (FDirEntry *) f->buffer;
@@ -33,8 +46,6 @@ FFatResult file_list_dir(FFat32* f, uint32_t initial_cluster, FContinuation cont
             return F_OK;
     }
     
-    // since the directory continues in the next sector, store the next sector/cluster and return F_MORE_DATA
-    TRY(sections_fat_calculate_next_cluster_sector(f, &next_cluster, &next_sector))
     return F_MORE_DATA;
 }
 
@@ -43,7 +54,7 @@ FFatResult file_list_current_dir(FFat32* f, FContinuation continuation)
     return file_list_dir(f, current_dir_cluster, continuation);
 }
 
-#ifndef FFAT_DEBUG
+#ifdef FFAT_DEBUG
 #include <stdio.h>
 #include <string.h>
 
@@ -59,7 +70,6 @@ void print_dir(FFat32* f, uint32_t cluster, const char* path)
         memcpy(entries, f->buffer, 512);
         for (size_t i = 0; i < 16; ++i) {
             if ((uint8_t) entries[i].name[0] == DIR_ENTRY_FREE) {
-                ++i;
                 continue;
             }
             if ((uint8_t) entries[i].name[0] == DIR_ENTRY_EOF)

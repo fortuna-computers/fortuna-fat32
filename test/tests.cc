@@ -75,8 +75,6 @@ std::vector<Test> prepare_tests()
             "Check directories",
 
             [&](FFat32* ffat, Scenario const&) {
-                f_fat32_debug(ffat);
-                
                 directory.clear();
                 FFatResult r;
                 ffat->buffer[0] = F_START_OVER;

@@ -115,7 +115,7 @@ FFatResult sections_fat_calculate_next_cluster_sector(FFat32* f, uint32_t* clust
 
 FFatResult sections_load_data_cluster(FFat32* f, uint32_t cluster, uint16_t sector)
 {
-    TRY(io_read_raw_sector(f, data_sector_start + ((uint64_t) cluster / sectors_per_cluster) + sector))
+    TRY(io_read_raw_sector(f, data_sector_start + ((uint64_t) (cluster - 2) * sectors_per_cluster) + sector))
     return F_OK;
 }
 
@@ -136,14 +136,14 @@ void sections_debug(FFat32* f)
         uint32_t* fat = (uint32_t *) f->buffer;
         bool all_free = true;
         for (uint32_t i = 0; i < (BYTES_PER_SECTOR / sizeof(uint32_t)); ++i) {
-            if (i % 4 == 0) {
+            if (i % 8 == 0) {
                 all_free = true;
                 printf("[%08X]   ", sector * 4 + i);
             }
             if (fat[i] != FAT_CLUSTER_FREE)
                 all_free = false;
             printf("%08X ", fat[i]);
-            if (i % 4 == 3) {
+            if (i % 8 == 7) {
                 printf("\n");
                 if (all_free)
                     goto done;
