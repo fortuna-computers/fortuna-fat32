@@ -42,7 +42,7 @@ FFatResult io_init(FFat32* f, FFatBPB* fat_bpb)
     fat_bpb->sectors_per_cluster = BUF_GET8(f, BPB_SECTORS_PER_CLUSTER);
     fat_bpb->number_of_fats = BUF_GET8(f, BPB_NUMBER_OF_FATS);
     fat_bpb->fat_size_sectors = BUF_GET32(f, BPB_FAT_SIZE_SECTORS);
-    fat_bpb->reserved_sectors = BUF_GET32(f, BPB_RESERVED_SECTORS);
+    fat_bpb->reserved_sectors = BUF_GET16(f, BPB_RESERVED_SECTORS);
     fat_bpb->root_dir_cluster_ptr = BUF_GET32(f, BPB_ROOT_DIR_CLUSTER);
     
     if (fat_bpb->sectors_per_cluster == 0)

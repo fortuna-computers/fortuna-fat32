@@ -9,7 +9,7 @@
 
 #define FAT_CLUSTER_FREE    0x0
 
-static uint32_t fat_sector_start;
+static uint16_t fat_sector_start;
 static uint32_t fat_sector_size;
 static uint8_t  number_of_fats;
 static uint32_t data_sector_start;
@@ -23,7 +23,7 @@ FFatResult sections_init(FFat32* f)
     fat_sector_start = fat_bpb.reserved_sectors;
     fat_sector_size = fat_bpb.fat_size_sectors;
     number_of_fats = fat_bpb.number_of_fats;
-    data_sector_start = fat_sector_size + (number_of_fats * fat_sector_size);
+    data_sector_start = fat_sector_start + (number_of_fats * fat_sector_size);
     
     sectors_per_cluster = fat_bpb.sectors_per_cluster;
     
@@ -60,8 +60,8 @@ FFatResult sections_fsinfo_recalculate(FFat32* f, FSInfo* fsinfo)
     
     for (uint32_t sector = 0; sector < fat_sector_size; ++sector) {
         TRY(io_read_raw_sector(f, fat_sector_start + sector))
-        uint32_t* fat = *(uint32_t **) f->buffer;
-        for (uint16_t i = 0; i < BYTES_PER_SECTOR; ++i) {
+        uint32_t* fat = (uint32_t *) f->buffer;
+        for (uint32_t i = 0; i < (BYTES_PER_SECTOR / sizeof(uint32_t)); ++i) {
             if (fat[i] == FAT_CLUSTER_FREE) {
                 ++fsinfo->free_cluster_count;
                 if (fsinfo->next_free_cluster == FSI_INVALID)

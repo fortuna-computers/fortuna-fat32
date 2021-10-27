@@ -59,7 +59,7 @@ std::vector<Test> prepare_tests()
             [](uint8_t const* buffer, Scenario const& scenario) {
                 uint32_t free_ = *(uint32_t *) buffer;
                 DWORD found = scenario.get_free_space();
-                return abs((int) free_ - (int) found) < 1024;
+                return abs((int) free_ - (int) found) < 4096;
             }
     );
     

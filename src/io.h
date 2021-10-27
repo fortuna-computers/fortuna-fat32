@@ -20,7 +20,7 @@
 typedef struct FFatBPB {
     uint8_t    sectors_per_cluster;
     uint8_t    number_of_fats;
-    uint32_t   reserved_sectors;
+    uint16_t   reserved_sectors;
     uint32_t   fat_size_sectors;
     uint32_t   root_dir_cluster_ptr;
 } FFatBPB;

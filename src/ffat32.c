@@ -26,14 +26,21 @@ static FFatResult f_free(FFat32* f)
     return F_OK;
 }
 
+static FFatResult f_fsinfo_recalc(FFat32* f)
+{
+    FSInfo fsinfo;
+    TRY(sections_fsinfo_recalculate(f, &fsinfo))
+    return F_OK;
+}
+
 FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime)
 {
     switch (operation) {
         
-        case F_INIT:          f->reg.last_operation_result = f_init(f); break;
-        case F_BOOT:          f->reg.last_operation_result = f_boot(f); break;
-        case F_FREE:          f->reg.last_operation_result = f_free(f); break;
-        case F_FSINFO_RECALC: break;
+        case F_INIT:          f->reg.last_operation_result = f_init(f);          break;
+        case F_BOOT:          f->reg.last_operation_result = f_boot(f);          break;
+        case F_FREE:          f->reg.last_operation_result = f_free(f);          break;
+        case F_FSINFO_RECALC: f->reg.last_operation_result = f_fsinfo_recalc(f); break;
         case F_DIR:           break;
         case F_CD:            break;
         case F_MKDIR:         break;
