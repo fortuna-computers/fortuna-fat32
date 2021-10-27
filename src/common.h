@@ -17,4 +17,6 @@
 
 #define BYTES_PER_SECTOR 512
 
+#define FSI_INVALID 0xffffffff
+
 #endif //FORTUNA_FAT32_COMMON_H

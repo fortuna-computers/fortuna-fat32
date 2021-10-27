@@ -56,3 +56,9 @@ FFatResult io_read_raw_sector(FFat32* f, uint64_t sector)
     sector += partition_starting_sector;
     return f->read(sector, f->buffer, f->data) ? F_OK : F_IO_ERROR;
 }
+
+FFatResult io_write_raw_sector(FFat32* f, uint64_t sector)
+{
+    sector += partition_starting_sector;
+    return f->write(sector, f->buffer, f->data) ? F_OK : F_IO_ERROR;
+}

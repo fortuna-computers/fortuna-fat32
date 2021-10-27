@@ -20,7 +20,7 @@ typedef struct {
     uint32_t free_cluster_count;
 } FSInfo;
 
-FFatResult sections_fsinfo_get(FFat32* f, FSInfo* fsinfo);
+FFatResult sections_fsinfo_read(FFat32* f, FSInfo* fsinfo);
 FFatResult sections_fsinfo_recalculate(FFat32* f, FSInfo* fsinfo);
 
 #endif //FORTUNA_FAT32_SECTIONS_H

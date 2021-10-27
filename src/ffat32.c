@@ -19,8 +19,8 @@ static FFatResult f_boot(FFat32* f)
 static FFatResult f_free(FFat32* f)
 {
     FSInfo fsinfo;
-    TRY(sections_fsinfo_get(f, &fsinfo))
-    if (fsinfo.free_cluster_count == 0xffffffff)
+    TRY(sections_fsinfo_read(f, &fsinfo))
+    if (fsinfo.free_cluster_count == FSI_INVALID)
         TRY(sections_fsinfo_recalculate(f, &fsinfo))
     BUF_SET32(f, 0, fsinfo.free_cluster_count)
     return F_OK;
