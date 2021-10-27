@@ -283,10 +283,38 @@ static FFatResult fat_append_cluster(FFat32* f, uint32_t continue_from_cluster, 
     return F_OK;
 }
 
-// Remove a file from FAT
+// Remove a file from FAT (follows linked list deleting one by one)
 static FFatResult fat_remove_file(FFat32* f, uint32_t cluster_number, uint32_t* cluster_count)
 {
-    return F_OK;  // TODO
+    int64_t last_fat_sector_loaded = -1;
+    uint32_t next_cluster_to_delete = cluster_number;
+    *cluster_count = 0;
+    
+    do {
+        // find which sector to load
+        uint32_t cluster_ptr = next_cluster_to_delete * 4;
+        uint32_t sector_to_load = cluster_ptr / BYTES_PER_SECTOR;
+        if (sector_to_load != last_fat_sector_loaded) {
+            if (last_fat_sector_loaded != -1) // save previous iteration
+                TRY_IO(write_sector(f, f->reg.fat_sector_start + last_fat_sector_loaded))
+            TRY_IO(load_sector(f, f->reg.fat_sector_start + sector_to_load))
+            last_fat_sector_loaded = sector_to_load;
+        }
+        
+        // find next cluster
+        next_cluster_to_delete = from_32(f->buffer, cluster_ptr % BYTES_PER_SECTOR);
+    
+        // clear cluster in FAT
+        to_32(f->buffer, cluster_ptr % BYTES_PER_SECTOR, FAT_FREE);
+        ++(*cluster_count);
+        
+    } while (next_cluster_to_delete != FAT_EOC && next_cluster_to_delete != FAT_EOF);
+    
+    // save last iteration
+    if (last_fat_sector_loaded != -1)
+        TRY_IO(write_sector(f, f->reg.fat_sector_start + last_fat_sector_loaded))
+    
+    return F_OK;
 }
 
 // endregion
@@ -683,7 +711,9 @@ static FFatResult create_file_entry(FFat32* f, char* file_path, uint8_t attrib, 
 
 static FFatResult mark_file_entry_as_removed(FFat32* f, FPathLocation const* path_location)
 {
-    // TODO
+    TRY_IO(load_data_cluster(f, path_location->parent_dir_cluster, path_location->parent_dir_sector))
+    f->buffer[path_location->file_entry_in_parent_dir] = DIR_ENTRY_UNUSED;
+    TRY_IO(write_data_cluster(f, path_location->parent_dir_cluster, path_location->parent_dir_sector))
     return F_OK;
 }
 
