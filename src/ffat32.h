@@ -59,8 +59,6 @@ typedef enum FContinuation {
 } FContinuation;
 
 typedef struct __attribute__((__packed__)) FFatRegisters {
-    uint32_t   state_next_cluster;
-    uint32_t   state_next_sector;
     FFatResult last_operation_result : 8;
 } FFatRegisters;
 
@@ -77,6 +75,10 @@ extern "C" {
 #endif
 
 FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime);
+
+#ifdef FFAT_DEBUG
+    void f_fat32_debug(FFat32* f);
+#endif
 
 #ifdef __cplusplus
 }

@@ -15,7 +15,11 @@ static uint8_t  number_of_fats;
 static uint32_t data_sector_start;
 static uint8_t  sectors_per_cluster;
 
-FFatResult sections_init(FFat32* f)
+/********************/
+/*  INITIALIZATION  */
+/********************/
+
+FFatResult sections_init(FFat32* f, uint32_t* current_dir_cluster)
 {
     FFatBPB fat_bpb;
     TRY(io_init(f, &fat_bpb))
@@ -27,8 +31,14 @@ FFatResult sections_init(FFat32* f)
     
     sectors_per_cluster = fat_bpb.sectors_per_cluster;
     
+    *current_dir_cluster = fat_bpb.root_dir_cluster;
+    
     return F_OK;
 }
+
+/*****************/
+/*  BOOT/FSINFO  */
+/*****************/
 
 FFatResult sections_load_boot_sector(FFat32* f)
 {
@@ -74,3 +84,53 @@ FFatResult sections_fsinfo_recalculate(FFat32* f, FSInfo* fsinfo)
     
     return F_OK;
 }
+
+/*********/
+/*  FAT  */
+/*********/
+
+static FFatResult sections_fat_find_following_cluster(FFat32* f, uint32_t current_cluster, uint32_t* next_cluster)
+{
+    uint32_t cluster_ptr = current_cluster * 4;
+    uint32_t sector_to_load = cluster_ptr / BYTES_PER_SECTOR;
+    
+    TRY(io_read_raw_sector(f, fat_sector_start + sector_to_load))
+    
+    *next_cluster = BUF_GET32(f, cluster_ptr % BYTES_PER_SECTOR);
+    
+    return F_OK;
+}
+
+FFatResult sections_fat_calculate_next_cluster_sector(FFat32* f, uint32_t* cluster, uint16_t* sector)
+{
+    ++(*sector);
+    if (*sector >= sectors_per_cluster) {
+        TRY(sections_fat_find_following_cluster(f, *cluster, cluster))
+        *sector = 0;
+    }
+    return F_OK;
+}
+
+/*******************/
+/*  DATA CLUSTERS  */
+/*******************/
+
+FFatResult sections_load_data_cluster(FFat32* f, uint32_t cluster, uint16_t sector)
+{
+    TRY(io_read_raw_sector(f, data_sector_start + ((uint64_t) cluster / sectors_per_cluster) + sector))
+    return F_OK;
+}
+
+#ifdef FFAT_DEBUG
+#include <stdio.h>
+
+void sections_debug(FFat32* f)
+{
+    printf("Sectors per cluster: %d\n", sectors_per_cluster);
+    printf("Number of FATs: %d\n", number_of_fats);
+    printf("FAT sector start: 0x%X\n", fat_sector_start);
+    printf("FAT sector size: 0x%X\n", fat_sector_size);
+    printf("Data sector start: 0x%x\n", data_sector_start);
+    printf("\n");
+}
+#endif

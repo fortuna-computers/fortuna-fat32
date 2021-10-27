@@ -1,6 +1,7 @@
 #ifndef FORTUNA_FAT32_TEST_HH
 #define FORTUNA_FAT32_TEST_HH
 
+#define FFAT_DEBUG 1
 #include "../src/ffat32.h"
 #include "scenario.hh"
 #include "ff/ff.h"

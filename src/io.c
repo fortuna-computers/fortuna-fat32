@@ -43,7 +43,7 @@ FFatResult io_init(FFat32* f, FFatBPB* fat_bpb)
     fat_bpb->number_of_fats = BUF_GET8(f, BPB_NUMBER_OF_FATS);
     fat_bpb->fat_size_sectors = BUF_GET32(f, BPB_FAT_SIZE_SECTORS);
     fat_bpb->reserved_sectors = BUF_GET16(f, BPB_RESERVED_SECTORS);
-    fat_bpb->root_dir_cluster_ptr = BUF_GET32(f, BPB_ROOT_DIR_CLUSTER);
+    fat_bpb->root_dir_cluster = BUF_GET32(f, BPB_ROOT_DIR_CLUSTER);
     
     if (fat_bpb->sectors_per_cluster == 0)
         return F_NOT_FAT_32;
@@ -62,3 +62,12 @@ FFatResult io_write_raw_sector(FFat32* f, uint64_t sector)
     sector += partition_starting_sector;
     return f->write(sector, f->buffer, f->data) ? F_OK : F_IO_ERROR;
 }
+
+#ifdef FFAT_DEBUG
+#include <stdio.h>
+
+void io_debug(FFat32* f)
+{
+    printf("Partition starting sector: 0x%X\n", partition_starting_sector);
+}
+#endif

@@ -1,6 +1,7 @@
 #include "ffat32.h"
 
 #include "common.h"
+#include "io.h"
 #include "sections.h"
 #include "file.h"
 
@@ -33,6 +34,13 @@ static FFatResult f_fsinfo_recalc(FFat32* f)
     return F_OK;
 }
 
+static FFatResult f_dir(FFat32* f)
+{
+    FContinuation continuation = BUF_GET8(f, 0);
+    TRY(file_list_current_dir(f, continuation))
+    return F_OK;
+}
+
 FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime)
 {
     switch (operation) {
@@ -41,7 +49,7 @@ FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime)
         case F_BOOT:          f->reg.last_operation_result = f_boot(f);          break;
         case F_FREE:          f->reg.last_operation_result = f_free(f);          break;
         case F_FSINFO_RECALC: f->reg.last_operation_result = f_fsinfo_recalc(f); break;
-        case F_DIR:           break;
+        case F_DIR:           f->reg.last_operation_result = f_dir(f);           break;
         case F_CD:            break;
         case F_MKDIR:         break;
         case F_RMDIR:         break;
@@ -56,5 +64,19 @@ FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime)
     }
     return f->reg.last_operation_result;
 }
+
+#ifdef FFAT_DEBUG
+#include <stdio.h>
+
+void f_fat32_debug(FFat32* f)
+{
+    printf("\n=================================\n");
+    io_debug(f);
+    sections_debug(f);
+    file_debug(f);
+    printf("=================================\n");
+}
+
+#endif
 
 // http://elm-chan.org/docs/fat_e.html

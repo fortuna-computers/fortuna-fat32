@@ -22,12 +22,16 @@ typedef struct FFatBPB {
     uint8_t    number_of_fats;
     uint16_t   reserved_sectors;
     uint32_t   fat_size_sectors;
-    uint32_t   root_dir_cluster_ptr;
+    uint32_t   root_dir_cluster;
 } FFatBPB;
 
 FFatResult io_init(FFat32* f, FFatBPB* fat_bpb);
 
 FFatResult io_read_raw_sector(FFat32* f, uint64_t sector);
 FFatResult io_write_raw_sector(FFat32* f, uint64_t sector);
+
+#ifdef FFAT_DEBUG
+void io_debug(FFat32* f);
+#endif
 
 #endif //FORTUNA_FAT32_IO_H

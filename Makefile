@@ -1,7 +1,7 @@
 FORTUNA_FAT32 = src/io.o src/sections.o src/file.o src/ffat32.o
 TEST_OBJ = test/main.o test/tests.o test/helper.o test/scenario.o test/diskio.o test/ff/ff.o \
 	test/tags.o
-CFLAGS = -std=c11
+CFLAGS = -std=c11 -DFFAT_DEBUG=1
 CPPFLAGS = -Wall -Wextra
 CXXFLAGS = -std=c++17
 MCU = atmega16

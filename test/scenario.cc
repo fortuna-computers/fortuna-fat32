@@ -19,6 +19,7 @@ std::vector<Scenario> Scenario::all_scenarios()
     
     scenarios.emplace_back("Standard disk with directories and files");
     
+    /*
     scenarios.emplace_back("Standard empty disk", 1, DiskState::Empty);
     
     scenarios.emplace_back("Raw image without partitions", 0);
@@ -35,6 +36,7 @@ std::vector<Scenario> Scenario::all_scenarios()
     scenarios.emplace_back("Disk with 4 bytes alignment", 1, DiskState::Complete, 256, 4, 4);
     scenarios.emplace_back("Disk with 512 bytes alignment", 1, DiskState::Complete, 256, 4, 512);
     scenarios.emplace_back("Disk with 2048 bytes alignment", 1, DiskState::Complete, 256, 4, 2048);
+     */
     
     return scenarios;
 }

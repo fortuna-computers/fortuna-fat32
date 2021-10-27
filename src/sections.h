@@ -12,7 +12,7 @@
 
 #include "ffat32.h"
 
-FFatResult sections_init(FFat32* f);
+FFatResult sections_init(FFat32* f, uint32_t* current_dir_cluster);
 FFatResult sections_load_boot_sector(FFat32* f);
 
 typedef struct {
@@ -22,5 +22,13 @@ typedef struct {
 
 FFatResult sections_fsinfo_read(FFat32* f, FSInfo* fsinfo);
 FFatResult sections_fsinfo_recalculate(FFat32* f, FSInfo* fsinfo);
+
+FFatResult sections_load_data_cluster(FFat32* f, uint32_t cluster, uint16_t sector);
+
+FFatResult sections_fat_calculate_next_cluster_sector(FFat32* f, uint32_t* cluster, uint16_t* sector);
+
+#ifdef FFAT_DEBUG
+void sections_debug(FFat32* f);
+#endif
 
 #endif //FORTUNA_FAT32_SECTIONS_H
