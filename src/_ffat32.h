@@ -1,10 +1,3 @@
-/* LAYER 2 of FatFS -- implemented here are functions to deal with:
- *
- *   - Filesystem operations.
- *
- * All functions here are PUBLIC.
- */
-
 #ifndef FORTUNA_FAT32_H_
 #define FORTUNA_FAT32_H_
 
@@ -45,7 +38,7 @@ typedef enum FFatResult {
     F_INCORRECT_OPERATION       = 0x3,  // tried to call an operation that does not exist
     F_NOT_FAT_32                = 0x4,  // the filesystem is not FAT32
     F_BYTES_PER_SECTOR_NOT_512  = 0x5,  // BPB_BYTES_PER_SECTOR is not 512
-    F_PATH_NOT_FOUND            = 0x6,  // file not found
+    F_PATH_NOT_FOUND    = 0x6,  // file not found
     F_FILE_PATH_TOO_LONG        = 0x7,  // file path larger that 127
     F_INVALID_FILENAME          = 0x8,  // filename contains an invalid character
     F_DEVICE_FULL               = 0x9,  // no space left on device
@@ -58,10 +51,21 @@ typedef enum FContinuation {
     F_CONTINUE   = 1,
 } FContinuation;
 
-typedef struct __attribute__((__packed__)) FFatRegisters {
+typedef struct FFatRegisters {
+    FFatResult last_operation_result : 8;
+    uint8_t    sectors_per_cluster;
+    uint8_t    number_of_fats;
+    uint8_t    _unused;
+    
+    uint32_t   partition_start;
+    uint32_t   fat_sector_start;
+    uint32_t   fat_size_sectors;
+    uint32_t   data_sector_start;
+    uint32_t   root_dir_cluster;
+    uint32_t   current_dir_cluster;
+    
     uint32_t   state_next_cluster;
     uint32_t   state_next_sector;
-    FFatResult last_operation_result : 8;
 } FFatRegisters;
 
 typedef struct FFat32 {

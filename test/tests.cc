@@ -19,6 +19,21 @@ std::vector<Test> prepare_tests()
     //
 
     // region ...
+    
+    tests.emplace_back(
+            "Load boot sector",
+            
+            [&](FFat32* ffat, Scenario const&) {
+                result = f_fat32(ffat, F_BOOT, 0);
+            },
+            
+            [&](uint8_t const* buffer, Scenario const&) {
+                return result == F_OK
+                       && buffer[0x0] == 0xeb
+                       && *(uint16_t *) &buffer[510] == 0xaa55;
+            }
+    );
+
     tests.emplace_back(
             "Check disk space (pre-existing)",
             
@@ -32,7 +47,7 @@ std::vector<Test> prepare_tests()
                 return free_ == found;
             }
     );
-    
+
     tests.emplace_back(
             "Check disk space (calculate)",
 
@@ -47,20 +62,6 @@ std::vector<Test> prepare_tests()
                 return abs((int) free_ - (int) found) < 1024;
             }
     );
-
-    tests.emplace_back(
-            "Load boot sector",
-
-            [&](FFat32* ffat, Scenario const&) {
-                result = f_fat32(ffat, F_BOOT, 0);
-            },
-
-            [&](uint8_t const* buffer, Scenario const&) {
-                return result == F_OK
-                    && buffer[0x0] == 0xeb
-                    && *(uint16_t *) &buffer[510] == 0xaa55;
-            }
-    );
     
     // endregion
     
@@ -69,7 +70,8 @@ std::vector<Test> prepare_tests()
     //
     
     // region ...
-    
+
+#if 0
     tests.emplace_back(
             "Check directories",
 
@@ -489,6 +491,7 @@ std::vector<Test> prepare_tests()
                 return result == F_IO_ERROR;
             }
     );
+#endif
     
     return tests;
 }
