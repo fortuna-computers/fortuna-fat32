@@ -24,9 +24,11 @@ typedef struct __attribute__((__packed__)) {
     uint32_t file_size;
 } FDirEntry;
 
-#define DIR_ENTRIES_PER_SECTOR  ((uint16_t) (BYTES_PER_SECTOR / sizeof(FDirEntry)))   /* 64 */
+#define DIR_ENTRIES_PER_SECTOR  ((uint16_t) (BYTES_PER_SECTOR / sizeof(FDirEntry)))   /* 16 */
 #define DIR_ENTRY_EOF   0x00
 #define DIR_ENTRY_FREE  0xe5
+
+#define ATTR_DIR         0x10
 
 FFatResult file_init(FFat32* f);
 

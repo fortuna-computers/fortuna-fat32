@@ -7,8 +7,6 @@
 #define FSI_FREE_COUNT  0x1e8
 #define FSI_NEXT_FREE   0x1ec
 
-#define FAT_CLUSTER_FREE    0x0
-
 static uint16_t fat_sector_start;
 static uint32_t fat_sector_size;
 static uint8_t  number_of_fats;
@@ -19,7 +17,7 @@ static uint8_t  sectors_per_cluster;
 /*  INITIALIZATION  */
 /********************/
 
-FFatResult sections_init(FFat32* f, uint32_t* current_dir_cluster)
+FFatResult sections_init(FFat32* f, uint32_t* root_dir_cluster)
 {
     FFatBPB fat_bpb;
     TRY(io_init(f, &fat_bpb))
@@ -31,7 +29,7 @@ FFatResult sections_init(FFat32* f, uint32_t* current_dir_cluster)
     
     sectors_per_cluster = fat_bpb.sectors_per_cluster;
     
-    *current_dir_cluster = fat_bpb.root_dir_cluster;
+    *root_dir_cluster = fat_bpb.root_dir_cluster;
     
     return F_OK;
 }
@@ -89,7 +87,7 @@ FFatResult sections_fsinfo_recalculate(FFat32* f, FSInfo* fsinfo)
 /*  FAT  */
 /*********/
 
-static FFatResult sections_fat_find_following_cluster(FFat32* f, uint32_t current_cluster, uint32_t* next_cluster)
+FFatResult sections_fat_find_following_cluster(FFat32* f, uint32_t current_cluster, uint32_t* next_cluster)
 {
     uint32_t cluster_ptr = current_cluster * 4;
     uint32_t sector_to_load = cluster_ptr / BYTES_PER_SECTOR;
@@ -131,6 +129,28 @@ void sections_debug(FFat32* f)
     printf("FAT sector start: 0x%X\n", fat_sector_start);
     printf("FAT sector size: 0x%X\n", fat_sector_size);
     printf("Data sector start: 0x%x\n", data_sector_start);
+    printf("\n");
+    printf("FAT:\n");
+    for (uint32_t sector = 0; sector < fat_sector_size; ++sector) {
+        io_read_raw_sector(f, fat_sector_start + sector);
+        uint32_t* fat = (uint32_t *) f->buffer;
+        bool all_free = true;
+        for (uint32_t i = 0; i < (BYTES_PER_SECTOR / sizeof(uint32_t)); ++i) {
+            if (i % 4 == 0) {
+                all_free = true;
+                printf("[%08X]   ", sector * 4 + i);
+            }
+            if (fat[i] != FAT_CLUSTER_FREE)
+                all_free = false;
+            printf("%08X ", fat[i]);
+            if (i % 4 == 3) {
+                printf("\n");
+                if (all_free)
+                    goto done;
+            }
+        }
+    }
+done:
     printf("\n");
 }
 #endif

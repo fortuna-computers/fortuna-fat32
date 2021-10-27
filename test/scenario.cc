@@ -17,9 +17,9 @@ std::vector<Scenario> Scenario::all_scenarios()
 {
     std::vector<Scenario> scenarios;
     
+    /*
     scenarios.emplace_back("Standard disk with directories and files");
     
-    /*
     scenarios.emplace_back("Standard empty disk", 1, DiskState::Empty);
     
     scenarios.emplace_back("Raw image without partitions", 0);
@@ -28,8 +28,11 @@ std::vector<Scenario> Scenario::all_scenarios()
     scenarios.emplace_back("Disk with one sector per cluster", 1, DiskState::Complete, 64, 1);
     
     scenarios.emplace_back("Disk with 8 sectors per cluster", 1, DiskState::Complete, 512, 8);
+     */
     
     scenarios.emplace_back("Standard disk with 64 files in root", 1, DiskState::Files64);
+    
+    /*
     
     scenarios.emplace_back("Standard disk with 300 files in root", 1, DiskState::Files300);
     

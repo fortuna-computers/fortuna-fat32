@@ -12,7 +12,11 @@
 
 #include "ffat32.h"
 
-FFatResult sections_init(FFat32* f, uint32_t* current_dir_cluster);
+#define FAT_EOF    0x0fffffff
+#define FAT_EOC    0x0ffffff8
+#define FAT_CLUSTER_FREE    0x0
+
+FFatResult sections_init(FFat32* f, uint32_t* root_dir_cluster);
 FFatResult sections_load_boot_sector(FFat32* f);
 
 typedef struct {
@@ -23,9 +27,10 @@ typedef struct {
 FFatResult sections_fsinfo_read(FFat32* f, FSInfo* fsinfo);
 FFatResult sections_fsinfo_recalculate(FFat32* f, FSInfo* fsinfo);
 
-FFatResult sections_load_data_cluster(FFat32* f, uint32_t cluster, uint16_t sector);
-
+FFatResult sections_fat_find_following_cluster(FFat32* f, uint32_t current_cluster, uint32_t* next_cluster);
 FFatResult sections_fat_calculate_next_cluster_sector(FFat32* f, uint32_t* cluster, uint16_t* sector);
+
+FFatResult sections_load_data_cluster(FFat32* f, uint32_t cluster, uint16_t sector);
 
 #ifdef FFAT_DEBUG
 void sections_debug(FFat32* f);
