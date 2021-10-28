@@ -1,11 +1,14 @@
 #include "../src/ffat32.h"
 
+static char buffer[512] = {0};
+
 int main()
 {
     FFat32 f;
+    f.buffer = buffer;
     f_fat32(&f, F_INIT, 0);
     f_fat32(&f, F_FREE, 0);
-    f_fat32(&f, F_FREE_R, 0);
+    f_fat32(&f, F_FSINFO_RECALC, 0);
     f_fat32(&f, F_CD, 0);
     f_fat32(&f, F_DIR, 0);
     f_fat32(&f, F_MKDIR, 0);

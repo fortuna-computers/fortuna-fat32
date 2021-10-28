@@ -14,7 +14,7 @@
 #define BPB_FAT_SIZE_SECTORS     0x24
 #define BPB_ROOT_DIR_CLUSTER     0x2c
 
-static uint32_t partition_starting_sector;
+static uint32_t partition_starting_sector = 0;
 
 FFatResult io_init(FFat32* f, FFatBPB* fat_bpb)
 {

@@ -1,7 +1,6 @@
 #include "ffat32.h"
 
 #include "common.h"
-#include "io.h"
 #include "sections.h"
 #include "file.h"
 

@@ -3,10 +3,9 @@
 #include <string.h>
 
 #include "common.h"
-#include "io.h"
 #include "sections.h"
 
-#define MAX_PATH_SZ 256
+#define MAX_PATH_SZ 128
 
 static uint32_t current_dir_cluster = 0;
 static uint32_t root_dir_cluster = 0;

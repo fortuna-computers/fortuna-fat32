@@ -11,7 +11,7 @@
 /*  GLOBALS  */
 /*************/
 
-#define MAX_FILE_PATH 256
+#define MAX_FILE_PATH 128
 static char global_file_path[MAX_FILE_PATH];
 
 /***********************/

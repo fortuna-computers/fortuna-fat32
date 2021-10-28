@@ -231,7 +231,6 @@ std::vector<Test> prepare_tests()
             }
     );
 
-#if 0
     tests.emplace_back(
             "Create dir at root",
 
@@ -254,6 +253,7 @@ std::vector<Test> prepare_tests()
             }
     );
 
+#if 0
     tests.emplace_back(
             "Create dir at absolute location",
             

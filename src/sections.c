@@ -7,11 +7,11 @@
 #define FSI_FREE_COUNT  0x1e8
 #define FSI_NEXT_FREE   0x1ec
 
-static uint16_t fat_sector_start;
-static uint32_t fat_sector_size;
-static uint8_t  number_of_fats;
-static uint32_t data_sector_start;
-static uint8_t  sectors_per_cluster;
+static uint16_t fat_sector_start = 0;
+static uint32_t fat_sector_size  = 0;
+static uint8_t  number_of_fats   = 0;
+static uint32_t data_sector_start = 0;
+static uint8_t  sectors_per_cluster = 0;
 
 /********************/
 /*  INITIALIZATION  */
