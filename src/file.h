@@ -24,15 +24,22 @@ typedef struct __attribute__((__packed__)) {
     uint32_t file_size;
 } FDirEntry;
 
+typedef struct FCurrentSector {
+    uint32_t cluster;
+    uint16_t sector;
+} FCurrentSector;
+
 #define DIR_ENTRIES_PER_SECTOR  ((uint16_t) (BYTES_PER_SECTOR / sizeof(FDirEntry)))   /* 16 */
 #define DIR_ENTRY_EOF   0x00
 #define DIR_ENTRY_FREE  0xe5
+#define FILENAME_SZ     11
 
 #define ATTR_DIR         0x10
 
 FFatResult file_init(FFat32* f);
 
 FFatResult file_list_current_dir(FFat32* f, FContinuation continuation);
+FFatResult file_list_dir(FFat32* f, uint32_t initial_cluster, FContinuation continuation, FCurrentSector* current_sector);
 
 FFatResult file_cd(FFat32* f, const char* path);
 
