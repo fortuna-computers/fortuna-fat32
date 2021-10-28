@@ -111,7 +111,6 @@ std::vector<Test> prepare_tests()
             }
     );
 
-#if 0
     tests.emplace_back(
             "Cd to directory (relative path)",
             
@@ -138,6 +137,7 @@ std::vector<Test> prepare_tests()
             }
     );
 
+#if 0
     tests.emplace_back(
             "Cd to directory (relative path with slash at the end)",
 

@@ -41,6 +41,12 @@ static FFatResult f_dir(FFat32* f)
     return F_OK;
 }
 
+static FFatResult f_cd(FFat32* f)
+{
+    TRY(file_cd(f, (const char *) f->buffer))
+    return F_OK;
+}
+
 FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime)
 {
     switch (operation) {
@@ -50,7 +56,7 @@ FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime)
         case F_FREE:          f->reg.last_operation_result = f_free(f);          break;
         case F_FSINFO_RECALC: f->reg.last_operation_result = f_fsinfo_recalc(f); break;
         case F_DIR:           f->reg.last_operation_result = f_dir(f);           break;
-        case F_CD:            break;
+        case F_CD:            f->reg.last_operation_result = f_cd(f);            break;
         case F_MKDIR:         break;
         case F_RMDIR:         break;
         case F_OPEN:          break;

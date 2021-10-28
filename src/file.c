@@ -12,6 +12,13 @@ static uint32_t root_dir_cluster = 0;
 static uint32_t next_cluster = 0;
 static uint16_t next_sector = 0;
 
+typedef struct FPathLocation {
+    uint32_t data_cluster;
+    uint32_t parent_dir_cluster;
+    uint16_t parent_dir_sector;
+    uint16_t file_entry_in_parent_dir;
+} FPathLocation;
+
 FFatResult file_init(FFat32* f)
 {
     TRY(sections_init(f, &root_dir_cluster))
@@ -52,6 +59,38 @@ FFatResult file_list_dir(FFat32* f, uint32_t initial_cluster, FContinuation cont
 FFatResult file_list_current_dir(FFat32* f, FContinuation continuation)
 {
     return file_list_dir(f, current_dir_cluster, continuation);
+}
+
+static FFatResult file_find_path_in_dir(FFat32* f, const char* path, uint32_t cluster, FPathLocation* location)
+{
+    // TODO
+}
+
+static FFatResult file_find_path(FFat32* f, const char* path, FPathLocation* location)
+{
+    uint32_t initial_cluster = 0;
+    if (path[0] == '/') {
+        initial_cluster = root_dir_cluster;
+        ++path;
+    }
+    return file_find_path_in_dir(f, path, initial_cluster, location);
+}
+
+FFatResult file_cd(FFat32* f, const char* path)
+{
+    // find file location
+    FPathLocation path_location;
+    TRY(file_find_path(f, path, &path_location))
+
+    // check if it is a directory
+    TRY(sections_load_data_cluster(f, path_location.parent_dir_cluster, path_location.parent_dir_sector))
+    FDirEntry* entry = (FDirEntry *) &f->buffer[path_location.file_entry_in_parent_dir];
+    if (!(entry->attrib & ATTR_DIR))
+        return F_NOT_A_DIRECTORY;
+    
+    // set current dir
+    current_dir_cluster = path_location.data_cluster;
+    return F_OK;
 }
 
 #ifdef FFAT_DEBUG

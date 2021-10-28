@@ -34,6 +34,8 @@ FFatResult file_init(FFat32* f);
 
 FFatResult file_list_current_dir(FFat32* f, FContinuation continuation);
 
+FFatResult file_cd(FFat32* f, const char* path);
+
 #ifdef FFAT_DEBUG
 void file_debug(FFat32* f);
 #endif
