@@ -51,6 +51,7 @@ typedef enum FFatResult {
     F_DEVICE_FULL               = 0x9,  // no space left on device
     F_DIR_NOT_EMPTY             = 0xa,  // trying to remove a non-empty directory
     F_NOT_A_DIRECTORY           = 0xb,  // trying to remove a non-directory with rmdir
+    F_FILE_ALREADY_EXISTS       = 0xc,  // trying to create a file that already exists
 } FFatResult;
 
 typedef enum FContinuation {

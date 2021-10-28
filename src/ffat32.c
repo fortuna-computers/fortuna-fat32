@@ -46,17 +46,23 @@ static FFatResult f_cd(FFat32* f)
     return F_OK;
 }
 
+static FFatResult f_mkdir(FFat32* f, uint32_t fat_datetime)
+{
+    TRY(file_create_dir(f, (const char*) f->buffer, fat_datetime))
+    return F_OK;
+}
+
 FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime)
 {
     switch (operation) {
         
-        case F_INIT:          f->reg.last_operation_result = f_init(f);          break;
-        case F_BOOT:          f->reg.last_operation_result = f_boot(f);          break;
-        case F_FREE:          f->reg.last_operation_result = f_free(f);          break;
-        case F_FSINFO_RECALC: f->reg.last_operation_result = f_fsinfo_recalc(f); break;
-        case F_DIR:           f->reg.last_operation_result = f_dir(f);           break;
-        case F_CD:            f->reg.last_operation_result = f_cd(f);            break;
-        case F_MKDIR:         break;
+        case F_INIT:          f->reg.last_operation_result = f_init(f);                break;
+        case F_BOOT:          f->reg.last_operation_result = f_boot(f);                break;
+        case F_FREE:          f->reg.last_operation_result = f_free(f);                break;
+        case F_FSINFO_RECALC: f->reg.last_operation_result = f_fsinfo_recalc(f);       break;
+        case F_DIR:           f->reg.last_operation_result = f_dir(f);                 break;
+        case F_CD:            f->reg.last_operation_result = f_cd(f);                  break;
+        case F_MKDIR:         f->reg.last_operation_result = f_mkdir(f, fat_datetime); break;
         case F_RMDIR:         break;
         case F_OPEN:          break;
         case F_CLOSE:         break;

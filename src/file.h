@@ -35,6 +35,7 @@ typedef struct FCurrentSector {
 #define FILENAME_SZ     11
 
 #define ATTR_DIR         0x10
+#define ATTR_ANY         0xff
 
 FFatResult file_init(FFat32* f);
 
@@ -42,6 +43,7 @@ FFatResult file_list_current_dir(FFat32* f, FContinuation continuation);
 FFatResult file_list_dir(FFat32* f, uint32_t initial_cluster, FContinuation continuation, FCurrentSector* current_sector);
 
 FFatResult file_change_current_dir(FFat32* f, const char* path);
+FFatResult file_create_dir(FFat32* f, char* path, uint32_t fat_datetime);
 
 #ifdef FFAT_DEBUG
 void file_debug(FFat32* f);

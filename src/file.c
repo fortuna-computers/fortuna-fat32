@@ -109,12 +109,14 @@ static FFatResult find_file_in_dir(FFat32* f, const char* path_start, const char
         FDirEntry* entries = (FDirEntry *) f->buffer;
         for (uint16_t i = 0; i < DIR_ENTRIES_PER_SECTOR; ++i) {
             if ((entries[i].attrib & attrib_mask) && (strncmp(entries[i].name, fat_filename, FILENAME_SZ) == 0)) {
-                *location = (FPathLocation) {
-                    .parent_dir_cluster = current_sector.cluster,
-                    .parent_dir_sector = current_sector.sector,
-                    .file_entry_in_parent_dir = i * DIR_ENTRIES_PER_SECTOR,
-                    .data_cluster = (((uint32_t) entries[i].cluster_high) << 8) | entries[i].cluster_low,
-                };
+                if (location) {
+                    *location = (FPathLocation) {
+                        .parent_dir_cluster = current_sector.cluster,
+                        .parent_dir_sector = current_sector.sector,
+                        .file_entry_in_parent_dir = i * DIR_ENTRIES_PER_SECTOR,
+                        .data_cluster = (((uint32_t) entries[i].cluster_high) << 8) | entries[i].cluster_low,
+                    };
+                }
                 return F_OK;
             }
         }
@@ -164,6 +166,58 @@ FFatResult file_change_current_dir(FFat32* f, const char* path)
 
     // set current dir
     current_dir_cluster = path_location.data_cluster;
+    return F_OK;
+}
+
+static FFatResult path_split(char* path, char** directory, char** basename)
+{
+    char* last_slash = strrchr(path, '/');
+    if (last_slash == NULL) {
+        *directory = NULL;
+        *basename = path;
+    } else {
+        *last_slash = '\0';
+        *directory = path;
+        *basename = last_slash + 1;
+    }
+    return F_OK;
+}
+
+static FFatResult file_create_dir_at_location(FFat32* f, const char* basename, uint32_t parent_dir_cluster, uint32_t fat_datetime)
+{
+    return F_OK;
+}
+
+FFatResult file_create_dir(FFat32* f, char* path, uint32_t fat_datetime)
+{
+    if (strlen(path) >= MAX_PATH_SZ)
+        return F_FILE_PATH_TOO_LONG;
+    
+    // split path and filename
+    char *directory, *b;
+    TRY(path_split(path, &directory, &b))
+    char basename[FILENAME_SZ + 2] = {0};
+    strncpy(basename, b, FILENAME_SZ + 2);
+    
+    // find path
+    uint32_t parent_dir_cluster;
+    if (directory) {
+        FPathLocation path_location;
+        TRY(file_find_path(f, directory, ATTR_DIR, &path_location))
+        parent_dir_cluster = path_location.data_cluster;
+    } else {
+        parent_dir_cluster = current_dir_cluster;
+    }
+    
+    // check if file/directory already exists
+    FFatResult result = find_file_in_dir(f, basename, basename + strlen(basename), parent_dir_cluster, ATTR_ANY, NULL);
+    if (result == F_OK)
+        return F_FILE_ALREADY_EXISTS;
+    else if (result != F_PATH_NOT_FOUND)
+        return result;
+    
+    // create dir
+    TRY(file_create_dir_at_location(f, basename, parent_dir_cluster, fat_datetime))
     return F_OK;
 }
 
