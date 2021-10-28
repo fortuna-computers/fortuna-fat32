@@ -144,6 +144,8 @@ static FFatResult file_find_path(FFat32* f, const char* path, uint8_t attrib_mas
     
     // iterate over directory
     while (1) {
+        if (current_path[0] == '\0')
+            break;
         char* end = strchr(current_path, '/');
         TRY(find_file_in_dir(f, current_path, end, dir_cluster, attrib_mask, location))
         if (!end)
@@ -155,7 +157,7 @@ static FFatResult file_find_path(FFat32* f, const char* path, uint8_t attrib_mas
     return F_OK;
 }
 
-FFatResult file_cd(FFat32* f, const char* path)
+FFatResult file_change_current_dir(FFat32* f, const char* path)
 {
     // find file location
     FPathLocation path_location;

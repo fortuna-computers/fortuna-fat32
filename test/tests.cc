@@ -137,7 +137,6 @@ std::vector<Test> prepare_tests()
             }
     );
 
-#if 0
     tests.emplace_back(
             "Cd to directory (relative path with slash at the end)",
 
@@ -163,7 +162,7 @@ std::vector<Test> prepare_tests()
                 }
             }
     );
-    
+
     tests.emplace_back(
             "Cd to directory (absolute path)",
             
@@ -193,7 +192,7 @@ std::vector<Test> prepare_tests()
                 }
             }
     );
-    
+
     tests.emplace_back(
             "Cd to root ('/') and dir",
             
@@ -231,7 +230,8 @@ std::vector<Test> prepare_tests()
                 return true;
             }
     );
-    
+
+#if 0
     tests.emplace_back(
             "Create dir at root",
 

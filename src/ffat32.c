@@ -43,7 +43,7 @@ static FFatResult f_dir(FFat32* f)
 
 static FFatResult f_cd(FFat32* f)
 {
-    TRY(file_cd(f, (const char *) f->buffer))
+    TRY(file_change_current_dir(f, (const char*) f->buffer))
     return F_OK;
 }
 
