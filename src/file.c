@@ -183,8 +183,23 @@ static FFatResult path_split(char* path, char** directory, char** basename)
     return F_OK;
 }
 
+static FFatResult file_add_file_to_dir_in_cluster(FFat32* f, const char* basename, uint32_t dir_cluster, uint32_t fat_datetime,
+                                                  uint32_t data_cluster, uint32_t* new_file_data_cluster)
+{
+    // TODO
+    return F_OK;
+}
+
 static FFatResult file_create_dir_at_location(FFat32* f, const char* basename, uint32_t parent_dir_cluster, uint32_t fat_datetime)
 {
+    // create new directory
+    uint32_t new_dir_cluster;
+    TRY(file_add_file_to_dir_in_cluster(f, basename, parent_dir_cluster, fat_datetime, 0, &new_dir_cluster))
+    
+    // on the new directory, add '.' and '..'
+    TRY(file_add_file_to_dir_in_cluster(f, ".", new_dir_cluster, fat_datetime, new_dir_cluster, NULL))
+    TRY(file_add_file_to_dir_in_cluster(f, "..", new_dir_cluster, fat_datetime, parent_dir_cluster, NULL))
+    
     return F_OK;
 }
 
