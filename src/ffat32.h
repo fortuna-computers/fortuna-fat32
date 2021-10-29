@@ -28,9 +28,11 @@ typedef enum FFat32Op {
 
     // file operations
     F_OPEN    = 0x30,
-    F_CLOSE   = 0x31,
-    F_READ    = 0x32,
-    F_WRITE   = 0x33,
+    F_CREATE  = 0x31,
+    F_CLOSE   = 0x32,
+    F_SEEK    = 0x33,
+    F_READ    = 0x34,
+    F_WRITE   = 0x35,
 
     // dir/file operations
     F_STAT    = 0x40,
@@ -64,6 +66,7 @@ typedef enum FContinuation {
 
 typedef struct __attribute__((__packed__)) FFatRegisters {
     FFatResult last_operation_result : 8;
+    uint32_t   file_sector_length;
 } FFatRegisters;
 
 typedef struct FFat32 {

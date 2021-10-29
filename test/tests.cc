@@ -9,6 +9,7 @@
 
 static std::vector<File> directory;
 static FFatResult result;
+static uint32_t file_sector_length;
 
 std::vector<Test> prepare_tests()
 {
@@ -231,6 +232,7 @@ std::vector<Test> prepare_tests()
             }
     );
 
+#if 0
     tests.emplace_back(
             "Create dir at root",
 
@@ -253,7 +255,6 @@ std::vector<Test> prepare_tests()
             }
     );
 
-#if 0
     tests.emplace_back(
             "Create dir at absolute location",
             
@@ -455,18 +456,55 @@ std::vector<Test> prepare_tests()
     );
     
     // endregion
+#endif
     
     //
     // FILE OPERATIONS
     //
     
     // TODO - open file, read file, close file
+    tests.emplace_back(
+            "Open small existing file, read it and close it.",
+            
+            [&](FFat32* ffat, Scenario const&) {
+                strcpy(reinterpret_cast<char*>(ffat->buffer), "/FORTUNA.DAT");
+                result = f_fat32(ffat, F_OPEN, 0);
+                if (result != F_OK)
+                    return;
+                
+                result = f_fat32(ffat, F_READ, 0);
+                if (result != F_OK)
+                    return;
+                file_sector_length = ffat->reg.file_sector_length;
+                
+                result = f_fat32(ffat, F_CLOSE, 0);
+            },
+
+            [&](uint8_t const* buffer, Scenario const& scenario) {
+                if (scenario.disk_state != Scenario::DiskState::Complete)
+                    return result == F_PATH_NOT_FOUND;
+                
+                if (strcmp((const char *) buffer, "Hello world!") != 0)
+                    return false;
+                
+                if (file_sector_length != strlen("Hello world!"))
+                    return false;
+                
+                return true;
+            }
+    );
     
-    // TODO - create file, write file, remove file
+    // TODO - read large file
+    
+    // TODO - read with full path
+    
+    // TODO - create file, write file
     
     //
-    // MOVE
+    // MOVE/REMOVE
     //
+    
+    // TODO - remove file
     
     // TODO - move file
     
@@ -475,7 +513,8 @@ std::vector<Test> prepare_tests()
     //
     // SPECIAL SITUATIONS
     //
-    
+
+#if 0
     tests.emplace_back(
             "Device is returning I/O errors",
             

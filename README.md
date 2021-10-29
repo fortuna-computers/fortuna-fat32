@@ -40,8 +40,10 @@ File operations:
 
 | Operation | Description | Input | Output |
 |-----------|-------------|-------|--------|
-| `F_OPEN` | Open or create a file | File name + attributes (see below) | File number |
+| `F_OPEN` | Open an existing file | File name | File number |
+| `F_CREATE` | Create a file | File name | File number |
 | `F_CLOSE` | Close file | File number | - |
+| `F_SEEK`  | Seek to a file position | File number, 32-bit sector, or `0xFFFFFFFF` for end | The sector number. |
 | `F_READ` | Read block | File number, block number | Number of bytes left |
 | `F_WRITE` | Write block | File number, block number | Number of bytes to write |
 | `F_RM` | Remove file | File/Directory name | - |
