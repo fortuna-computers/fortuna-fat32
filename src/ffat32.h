@@ -39,19 +39,22 @@ typedef enum FFat32Op {
 } FFat32Op;
 
 typedef enum FFatResult {
-    F_OK                        = 0x0,
-    F_MORE_DATA                 = 0x1,  // operation went OK but there's more data to fetch/save
-    F_IO_ERROR                  = 0x2,  // the disk could not be accessed for some reason (error in read/write callbacks)
-    F_INCORRECT_OPERATION       = 0x3,  // tried to call an operation that does not exist
-    F_NOT_FAT_32                = 0x4,  // the filesystem is not FAT32
-    F_BYTES_PER_SECTOR_NOT_512  = 0x5,  // BPB_BYTES_PER_SECTOR is not 512
-    F_PATH_NOT_FOUND            = 0x6,  // file not found
-    F_FILE_PATH_TOO_LONG        = 0x7,  // file path larger that 127
-    F_INVALID_FILENAME          = 0x8,  // filename contains an invalid character
-    F_DEVICE_FULL               = 0x9,  // no space left on device
-    F_DIR_NOT_EMPTY             = 0xa,  // trying to remove a non-empty directory
-    F_NOT_A_DIRECTORY           = 0xb,  // trying to remove a non-directory with rmdir
-    F_FILE_ALREADY_EXISTS       = 0xc,  // trying to create a file that already exists
+    F_OK                        = 0x00,
+    F_MORE_DATA                 = 0x01,  // operation went OK but there's more data to fetch/save
+    F_IO_ERROR                  = 0x02,  // the disk could not be accessed for some reason (error in read/write callbacks)
+    F_INCORRECT_OPERATION       = 0x03,  // tried to call an operation that does not exist
+    F_NOT_FAT_32                = 0x04,  // the filesystem is not FAT32
+    F_BYTES_PER_SECTOR_NOT_512  = 0x05,  // BPB_BYTES_PER_SECTOR is not 512
+    F_PATH_NOT_FOUND            = 0x06,  // file not found
+    F_FILE_PATH_TOO_LONG        = 0x07,  // file path larger that 127
+    F_INVALID_FILENAME          = 0x08,  // filename contains an invalid character
+    F_DEVICE_FULL               = 0x09,  // no space left on device
+    F_DIR_NOT_EMPTY             = 0x0a,  // trying to remove a non-empty directory
+    F_NOT_A_DIRECTORY           = 0x0b,  // trying to remove a non-directory with rmdir
+    F_FILE_ALREADY_EXISTS       = 0x0c,  // trying to create a file that already exists
+    F_TOO_MANY_FILES_OPEN       = 0x0d,
+    F_INVALID_FILE_INDEX        = 0x0e,
+    F_FILE_NOT_OPEN             = 0x0f
 } FFatResult;
 
 typedef enum FContinuation {

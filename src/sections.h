@@ -29,6 +29,7 @@ FFatResult sections_fsinfo_recalculate(FFat32* f, FSInfo* fsinfo);
 
 FFatResult sections_fat_find_following_cluster(FFat32* f, uint32_t current_cluster, uint32_t* next_cluster);
 FFatResult sections_fat_calculate_next_cluster_sector(FFat32* f, uint32_t* cluster, uint16_t* sector);
+FFatResult sections_fat_reserve_cluster_for_new_file(FFat32* f, uint32_t* new_file_cluster_number);
 
 FFatResult sections_load_data_cluster(FFat32* f, uint32_t cluster, uint16_t sector);
 

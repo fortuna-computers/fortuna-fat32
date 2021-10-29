@@ -5,7 +5,9 @@
 #include "common.h"
 #include "sections.h"
 
-#define MAX_PATH_SZ 128
+#define MAX_PATH_SZ    128
+#define MAX_FILE_COUNT 3
+#define DIR_FILE_IDX   MAX_FILE_COUNT
 
 static uint32_t current_dir_cluster = 0;
 static uint32_t root_dir_cluster = 0;
@@ -15,12 +17,23 @@ static uint16_t next_sector = 0;
 
 static char path_copy[MAX_PATH_SZ] = {0};
 
-typedef struct FPathLocation {
+typedef struct __attribute__((__packed__)) FPathLocation {
     uint32_t data_cluster;
     uint32_t parent_dir_cluster;
     uint16_t parent_dir_sector;
     uint16_t file_entry_in_parent_dir;
 } FPathLocation;
+
+typedef struct __attribute__((__packed__)) FFileIndex {
+    FCurrentSector current_sector;
+    bool           open;
+} FFile;
+
+static FFile file_list[MAX_FILE_COUNT + 1] = {0};
+
+/********************/
+/*  INITIALIZATION  */
+/********************/
 
 FFatResult file_init(FFat32* f)
 {
@@ -28,6 +41,62 @@ FFatResult file_init(FFat32* f)
     current_dir_cluster = root_dir_cluster;
     return F_OK;
 }
+
+/*******************/
+/* FILE MANAGEMENT */
+/*******************/
+
+FFatResult file_open_existing_file_in_cluster(FFat32* f, uint32_t file_cluster_number, FILE_IDX* file_idx)
+{
+    if (*file_idx == DIR_FILE_IDX) {
+        file_list[DIR_FILE_IDX] = (FFile) { (FCurrentSector) { file_cluster_number, 0 }, true };
+        return F_OK;
+    } else {
+        for (uint8_t i = 0; i < MAX_FILE_COUNT; ++i) {
+            if (!file_list[i].open) {
+                file_list[i] = (FFile) { (FCurrentSector) { file_cluster_number, 0 }, true };
+                return F_OK;
+            }
+        }
+        return F_TOO_MANY_FILES_OPEN;
+    }
+}
+
+static FFatResult file_check_open(FFat32* f, FILE_IDX file_idx)
+{
+    (void) f;
+    if (file_idx > MAX_FILE_COUNT)
+        return F_INVALID_FILE_INDEX;
+    if (!file_list[file_idx].open)
+        return F_FILE_NOT_OPEN;
+    return F_OK;
+}
+
+FFatResult file_seek_end(FFat32* f, FILE_IDX file_idx, uint16_t* bytes_in_sector)
+{
+    TRY(file_check_open(f, file_idx))
+    // TODO
+    return F_OK;
+}
+
+FFatResult file_append_cluster(FFat32* f, FILE_IDX file_idx)
+{
+    TRY(file_check_open(f, file_idx))
+    // TODO
+    return F_OK;
+}
+
+FFatResult file_close(FFat32* f, FILE_IDX file_idx)
+{
+    TRY(file_check_open(f, file_idx))
+    file_list[file_idx].open = false;
+    return F_OK;
+}
+
+
+/************************/
+/* DIRECTORY MANAGEMENT */
+/************************/
 
 FFatResult file_list_dir(FFat32* f, uint32_t initial_cluster, FContinuation continuation, FCurrentSector* current_sector)
 {
@@ -183,10 +252,35 @@ static FFatResult path_split(char* path, char** directory, char** basename)
     return F_OK;
 }
 
-static FFatResult file_add_file_to_dir_in_cluster(FFat32* f, const char* basename, uint32_t dir_cluster, uint32_t fat_datetime,
-                                                  uint32_t data_cluster, uint32_t* new_file_data_cluster)
+static FFatResult file_insert_directory_record(FFat32* f, uint8_t file_idx, uint32_t bytes_in_dir_sector, const char* basename,
+                                               uint32_t fat_datetime, uint32_t new_file_data_cluster)
 {
     // TODO
+    return F_OK;
+}
+
+static FFatResult file_add_file_to_dir_in_cluster(FFat32* f, const char* basename, uint32_t dir_cluster, uint32_t fat_datetime,
+                                                  uint32_t file_data_cluster, uint32_t* new_file_data_cluster)
+{
+    FILE_IDX file_idx = DIR_FILE_IDX;
+    TRY(file_open_existing_file_in_cluster(f, dir_cluster, &file_idx))
+    
+    uint16_t bytes_in_sector;
+    TRY(file_seek_end(f, file_idx, &bytes_in_sector));
+    
+    if (bytes_in_sector == BYTES_PER_SECTOR) {
+        file_append_cluster(f, file_idx);
+        bytes_in_sector = 0;
+    }
+    
+    if (file_data_cluster == 0)
+        TRY(sections_fat_reserve_cluster_for_new_file(f, new_file_data_cluster))
+    else
+        *new_file_data_cluster = file_data_cluster;
+    
+    TRY(file_insert_directory_record(f, file_idx, bytes_in_sector, basename, fat_datetime, *new_file_data_cluster))
+    
+    TRY(file_close(f, file_idx))
     return F_OK;
 }
 
@@ -235,6 +329,10 @@ FFatResult file_create_dir(FFat32* f, char* path, uint32_t fat_datetime)
     TRY(file_create_dir_at_location(f, basename, parent_dir_cluster, fat_datetime))
     return F_OK;
 }
+
+/***********/
+/*  DEBUG  */
+/***********/
 
 #ifdef FFAT_DEBUG
 #include <stdio.h>

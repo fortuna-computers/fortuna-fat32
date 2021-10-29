@@ -24,7 +24,7 @@ typedef struct __attribute__((__packed__)) {
     uint32_t file_size;
 } FDirEntry;
 
-typedef struct FCurrentSector {
+typedef struct __attribute__((__packed__)) FCurrentSector {
     uint32_t cluster;
     uint16_t sector;
 } FCurrentSector;
@@ -37,13 +37,27 @@ typedef struct FCurrentSector {
 #define ATTR_DIR         0x10
 #define ATTR_ANY         0xff
 
+typedef uint8_t FILE_IDX;
+
+// initialization
+
 FFatResult file_init(FFat32* f);
+
+// file
+
+FFatResult file_open_existing_file_in_cluster(FFat32* f, uint32_t file_cluster_number, FILE_IDX* file_idx);
+FFatResult file_seek_end(FFat32* f, FILE_IDX file_idx, uint16_t* bytes_in_sector);
+FFatResult file_append_cluster(FFat32* f, FILE_IDX file_idx);
+FFatResult file_close(FFat32* f, FILE_IDX file_idx);
+
+// directory
 
 FFatResult file_list_current_dir(FFat32* f, FContinuation continuation);
 FFatResult file_list_dir(FFat32* f, uint32_t initial_cluster, FContinuation continuation, FCurrentSector* current_sector);
-
 FFatResult file_change_current_dir(FFat32* f, const char* path);
 FFatResult file_create_dir(FFat32* f, char* path, uint32_t fat_datetime);
+
+// debug
 
 #ifdef FFAT_DEBUG
 void file_debug(FFat32* f);
