@@ -447,12 +447,13 @@ std::vector<Test> prepare_tests()
     // FILE OPERATIONS
     //
     
-    // TODO - open file, read file, close file
+    // region ...
+    
     tests.emplace_back(
             "Open small existing file, read it and close it.",
             
             [&](FFat32* ffat, Scenario const& scenario) {
-                strcpy(reinterpret_cast<char*>(ffat->buffer), "/FORTUNA.DAT");
+                strcpy(reinterpret_cast<char*>(ffat->buffer), "FORTUNA.DAT");
                 
                 FFatResult r = f_fat32(ffat, F_OPEN, 0);
                 if (scenario.disk_state == Scenario::DiskState::Complete) {
@@ -464,7 +465,8 @@ std::vector<Test> prepare_tests()
     
                 uint8_t file_idx = ffat->buffer[0];
                 
-                check_f(f_fat32(ffat, F_READ, 0));  // file idx is already set on buffer
+                FFatResult rr = f_fat32(ffat, F_READ, 0);  // file idx is already set on buffer
+                assert(rr == F_OK);
                 file_sector_length = ffat->reg.file_sector_length;
                 file_contents = (const char *) ffat->buffer;
                 
@@ -481,11 +483,54 @@ std::vector<Test> prepare_tests()
             }
     );
     
-    // TODO - read large file
+    tests.emplace_back(
+            "Open small existing file, read it and close it.",
+            
+            [&](FFat32* ffat, Scenario const& scenario) {
+                strcpy(reinterpret_cast<char*>(ffat->buffer), "TAGS.TXT");
+                
+                FFatResult r = f_fat32(ffat, F_OPEN, 0);
+                if (scenario.disk_state == Scenario::DiskState::Complete) {
+                    check_f(r);
+                } else {
+                    assert(r == F_PATH_NOT_FOUND);
+                    return;
+                }
+                
+                uint8_t file_idx = ffat->buffer[0];
+                
+                FFatResult rr;
+                file_contents = "";
+                do {
+                    ffat->buffer[0] = file_idx;
+                    rr = check_f(f_fat32(ffat, F_READ, 0));  // file idx is already set on buffer
+                    file_sector_length = ffat->reg.file_sector_length;
+                    file_contents.append((const char *) ffat->buffer, file_sector_length);
+                } while (rr == F_MORE_DATA);
+                
+                ffat->buffer[0] = file_idx;
+                check_f(f_fat32(ffat, F_CLOSE, 0));
+            },
+            
+            [&](uint8_t const*, Scenario const& scenario) {
+                extern uint8_t _binary_test_TAGS_TXT_start[];
+                extern uint8_t _binary_test_TAGS_TXT_end[];
+                
+                static std::string tags_txt((const char *) _binary_test_TAGS_TXT_start, _binary_test_TAGS_TXT_end - _binary_test_TAGS_TXT_start);
+                
+                if (scenario.disk_state != Scenario::DiskState::Complete)
+                    return;
+                
+                assert(file_contents == tags_txt);
+            }
+    );
+    
     
     // TODO - read with full path
     
     // TODO - create file, write file
+    
+    // endregion
     
     //
     // MOVE/REMOVE

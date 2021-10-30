@@ -219,7 +219,7 @@ FFatResult file_read(FFat32* f, FILE_IDX file_idx)
         f->reg.file_sector_length = byte_counter;
         return F_OK;
     } else {
-        f->reg.file_sector_length = -1;
+        f->reg.file_sector_length = BYTES_PER_SECTOR;
         return F_MORE_DATA;
     }
 }

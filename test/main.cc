@@ -40,7 +40,10 @@ static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, 
 {
     std::cout << std::left << std::setw(43) << scenario.name;
     
+    std::string errors;
+    
     for (Test const& test: tests) {
+        errors.clear();
     
         scenario.prepare_scenario();
         
@@ -57,13 +60,17 @@ static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, 
             std::cout << GRN "\u2713" RST;
         } catch (std::exception& e) {
             std::cout << RED "X" RST;
+            errors += std::string("(") + e.what() + ") ";
         }
         std::cout.flush();
     
         scenario.end_scenario();
     }
     
-    std::cout << "\n";
+    std::cout << '\n';
+    
+    if (!errors.empty())
+        std::cout << RED << errors << RST << '\n';
 }
 
 
