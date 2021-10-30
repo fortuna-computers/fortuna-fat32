@@ -81,7 +81,8 @@ typedef struct FFat32 {
 extern "C" {
 #endif
 
-FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime);
+FFatResult  f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime);
+const char* f_error(FFatResult result);
 
 #ifdef FFAT_DEBUG
     void f_fat32_debug(FFat32* f);

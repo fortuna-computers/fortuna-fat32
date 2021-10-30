@@ -24,8 +24,9 @@ typedef struct __attribute__((__packed__)) FPathLocation {
     uint16_t file_entry_in_parent_dir;
 } FPathLocation;
 
-typedef struct __attribute__((__packed__)) FFileIndex {
+typedef struct FFileIndex {
     FCurrentSector current_sector;
+    uint32_t       byte_counter;
     bool           open;
 } FFile;
 
@@ -42,25 +43,149 @@ FFatResult file_init(FFat32* f)
     return F_OK;
 }
 
+/***************/
+/*  FIND FILE  */
+/***************/
+
+static FFatResult file_convert_filename_to_fat(const char* filename_start, const char* filename_end, char* result)
+{
+    memset(result, ' ', FILENAME_SZ);
+    
+    if (strcmp(result, ".") == 0) {
+        result[0] = '.';
+        return F_OK;
+    } else if (strcmp(result, "..") == 0) {
+        strcpy(result, "..");
+        return F_OK;
+    }
+    
+    uint8_t pos = 0, i = 0;
+    while (pos < FILENAME_SZ) {
+        if (filename_start[i] == 0 || i == filename_end - filename_start) {
+            return F_OK;
+        } else if (filename_start[i] == '.') {
+            pos = FILENAME_SZ - 3;
+            ++i;
+        } else {
+            result[pos++] = filename_start[i++];
+        }
+        // TODO - check for invalid chars
+    }
+    return F_OK;
+}
+
+
+static FFatResult find_file_in_dir(FFat32* f, const char* path_start, const char* path_end, uint32_t dir_cluster,
+                                   uint8_t attrib_mask, FPathLocation* location, uint32_t* file_size)
+{
+    char fat_filename[11];
+    TRY(file_convert_filename_to_fat(path_start, path_end, fat_filename))
+    
+    FContinuation continuation = F_START_OVER;
+    FFatResult result;
+    do {
+        FCurrentSector current_sector;
+        result = file_list_dir(f, dir_cluster, continuation, &current_sector);
+        if (result != F_OK && result != F_MORE_DATA)
+            return result;
+        
+        FDirEntry* entries = (FDirEntry *) f->buffer;
+        for (uint16_t i = 0; i < DIR_ENTRIES_PER_SECTOR; ++i) {
+            if ((entries[i].attrib & attrib_mask) && (strncmp(entries[i].name, fat_filename, FILENAME_SZ) == 0)) {
+                if (location) {
+                    *location = (FPathLocation) {
+                            .parent_dir_cluster = current_sector.cluster,
+                            .parent_dir_sector = current_sector.sector,
+                            .file_entry_in_parent_dir = i * DIR_ENTRIES_PER_SECTOR,
+                            .data_cluster = (((uint32_t) entries[i].cluster_high) << 8) | entries[i].cluster_low,
+                    };
+                }
+                if (file_size)
+                    *file_size = entries[i].file_size;
+                return F_OK;
+            }
+        }
+        
+        continuation = F_CONTINUE;
+    } while (result == F_MORE_DATA);
+    
+    return F_PATH_NOT_FOUND;
+}
+
+static FFatResult file_find_path(FFat32* f, const char* path, uint8_t attrib_mask, FPathLocation* location, uint32_t* file_size)
+{
+    if (strlen(path) >= MAX_PATH_SZ)
+        return F_FILE_PATH_TOO_LONG;
+    
+    // find initial cluster to look for (current directory or root)
+    uint32_t dir_cluster = current_dir_cluster;
+    if (path[0] == '/') {
+        dir_cluster = root_dir_cluster;
+        ++path;
+    }
+    
+    // since we're losing the buffer, we copy the path
+    strcpy(path_copy, path);
+    char* current_path = path_copy;
+    
+    // iterate over directory
+    while (1) {
+        if (current_path[0] == '\0')
+            break;
+        char* end = strchr(current_path, '/');
+        TRY(find_file_in_dir(f, current_path, end, dir_cluster, attrib_mask, location, file_size))
+        if (!end)
+            break;
+        dir_cluster = location->data_cluster;
+        current_path = end + 1;
+    }
+    
+    return F_OK;
+}
+
+
 /*******************/
 /* FILE MANAGEMENT */
 /*******************/
 
-FFatResult file_open_existing_file_in_cluster(FFat32* f, uint32_t file_cluster_number, FILE_IDX* file_idx)
+static FFatResult file_open_existing_file_in_cluster(FFat32* f, uint32_t file_cluster_number, FILE_IDX* file_idx, uint32_t file_size)
 {
     if (*file_idx == DIR_FILE_IDX) {
-        file_list[DIR_FILE_IDX] = (FFile) { (FCurrentSector) { file_cluster_number, 0 }, true };
+        file_list[DIR_FILE_IDX] = (FFile) {
+            .current_sector = (FCurrentSector) { file_cluster_number, 0 },
+            .open = true,
+            .byte_counter = 0,
+        };
         return F_OK;
     } else {
         for (uint8_t i = 0; i < MAX_FILE_COUNT; ++i) {
             if (!file_list[i].open) {
-                file_list[i] = (FFile) { (FCurrentSector) { file_cluster_number, 0 }, true };
+                file_list[i] = (FFile) {
+                    .current_sector = (FCurrentSector) { file_cluster_number, 0 },
+                    .open = true,
+                    .byte_counter = file_size,
+                };
+                *file_idx = i;
                 return F_OK;
             }
         }
         return F_TOO_MANY_FILES_OPEN;
     }
 }
+
+FFatResult file_open(FFat32* f, char* filename, FILE_IDX* file_idx)
+{
+    // find file
+    uint32_t file_size;
+    FPathLocation path_location;
+    TRY(file_find_path(f, filename, ATTR_ARCHIVE, &path_location, &file_size))
+    
+    // open file
+    TRY(file_open_existing_file_in_cluster(f, path_location.data_cluster, file_idx, file_size))
+    
+    return F_OK;
+}
+
 
 static FFatResult file_check_open(FFat32* f, FILE_IDX file_idx)
 {
@@ -70,6 +195,33 @@ static FFatResult file_check_open(FFat32* f, FILE_IDX file_idx)
     if (!file_list[file_idx].open)
         return F_FILE_NOT_OPEN;
     return F_OK;
+}
+
+FFatResult file_read(FFat32* f, FILE_IDX file_idx)
+{
+    TRY(file_check_open(f, file_idx))
+    FFile* file = &file_list[file_idx];
+    
+    uint32_t cluster = file->current_sector.cluster;
+    uint16_t sector = file->current_sector.sector;
+    uint32_t byte_counter = file->byte_counter;
+    
+    // advance counter
+    TRY(sections_fat_calculate_next_cluster_sector(f, &file->current_sector.cluster, &file->current_sector.sector))
+    file->byte_counter -= BYTES_PER_SECTOR;
+    
+    // read from disk
+    TRY(sections_load_data_cluster(f, cluster, sector))
+    if (byte_counter < BYTES_PER_SECTOR)
+        memset(&f->buffer[byte_counter], 0, BYTES_PER_SECTOR - byte_counter);
+    
+    if (file->current_sector.cluster == FAT_EOC || file->current_sector.cluster == FAT_EOF || byte_counter < BYTES_PER_SECTOR) {
+        f->reg.file_sector_length = byte_counter;
+        return F_OK;
+    } else {
+        f->reg.file_sector_length = -1;
+        return F_MORE_DATA;
+    }
 }
 
 FFatResult file_seek_end(FFat32* f, FILE_IDX file_idx, uint16_t* bytes_in_sector)
@@ -135,103 +287,11 @@ FFatResult file_list_current_dir(FFat32* f, FContinuation continuation)
     return file_list_dir(f, current_dir_cluster, continuation, NULL);
 }
 
-static FFatResult file_convert_filename_to_fat(const char* filename_start, const char* filename_end, char* result)
-{
-    memset(result, ' ', FILENAME_SZ);
-    
-    if (strcmp(result, ".") == 0) {
-        result[0] = '.';
-        return F_OK;
-    } else if (strcmp(result, "..") == 0) {
-        strcpy(result, "..");
-        return F_OK;
-    }
-    
-    uint8_t pos = 0, i = 0;
-    while (pos < FILENAME_SZ) {
-        if (filename_start[i] == 0 || i == filename_end - filename_start) {
-            return F_OK;
-        } else if (filename_start[i] == '.') {
-            pos = FILENAME_SZ - 3;
-            ++i;
-        } else {
-            result[pos++] = filename_start[i++];
-        }
-        // TODO - check for invalid chars
-    }
-    return F_OK;
-}
-
-static FFatResult find_file_in_dir(FFat32* f, const char* path_start, const char* path_end, uint32_t dir_cluster, uint8_t attrib_mask, FPathLocation* location)
-{
-    char fat_filename[11];
-    TRY(file_convert_filename_to_fat(path_start, path_end, fat_filename))
-    
-    FContinuation continuation = F_START_OVER;
-    FFatResult result;
-    do {
-        FCurrentSector current_sector;
-        result = file_list_dir(f, dir_cluster, continuation, &current_sector);
-        if (result != F_OK && result != F_MORE_DATA)
-            return result;
-    
-        FDirEntry* entries = (FDirEntry *) f->buffer;
-        for (uint16_t i = 0; i < DIR_ENTRIES_PER_SECTOR; ++i) {
-            if ((entries[i].attrib & attrib_mask) && (strncmp(entries[i].name, fat_filename, FILENAME_SZ) == 0)) {
-                if (location) {
-                    *location = (FPathLocation) {
-                        .parent_dir_cluster = current_sector.cluster,
-                        .parent_dir_sector = current_sector.sector,
-                        .file_entry_in_parent_dir = i * DIR_ENTRIES_PER_SECTOR,
-                        .data_cluster = (((uint32_t) entries[i].cluster_high) << 8) | entries[i].cluster_low,
-                    };
-                }
-                return F_OK;
-            }
-        }
-        
-        continuation = F_CONTINUE;
-    } while (result == F_MORE_DATA);
-    
-    return F_PATH_NOT_FOUND;
-}
-
-static FFatResult file_find_path(FFat32* f, const char* path, uint8_t attrib_mask, FPathLocation* location)
-{
-    if (strlen(path) >= MAX_PATH_SZ)
-        return F_FILE_PATH_TOO_LONG;
-    
-    // find initial cluster to look for (current directory or root)
-    uint32_t dir_cluster = current_dir_cluster;
-    if (path[0] == '/') {
-        dir_cluster = root_dir_cluster;
-        ++path;
-    }
-    
-    // since we're losing the buffer, we copy the path
-    strcpy(path_copy, path);
-    char* current_path = path_copy;
-    
-    // iterate over directory
-    while (1) {
-        if (current_path[0] == '\0')
-            break;
-        char* end = strchr(current_path, '/');
-        TRY(find_file_in_dir(f, current_path, end, dir_cluster, attrib_mask, location))
-        if (!end)
-            break;
-        dir_cluster = location->data_cluster;
-        current_path = end + 1;
-    }
-    
-    return F_OK;
-}
-
 FFatResult file_change_current_dir(FFat32* f, const char* path)
 {
     // find file location
     FPathLocation path_location;
-    TRY(file_find_path(f, path, ATTR_DIR, &path_location))
+    TRY(file_find_path(f, path, ATTR_DIR, &path_location, NULL))
 
     // set current dir
     current_dir_cluster = path_location.data_cluster;
@@ -263,7 +323,7 @@ static FFatResult file_add_file_to_dir_in_cluster(FFat32* f, const char* basenam
                                                   uint32_t file_data_cluster, uint32_t* new_file_data_cluster)
 {
     FILE_IDX file_idx = DIR_FILE_IDX;
-    TRY(file_open_existing_file_in_cluster(f, dir_cluster, &file_idx))
+    TRY(file_open_existing_file_in_cluster(f, dir_cluster, &file_idx, 0))
     
     uint16_t bytes_in_sector;
     TRY(file_seek_end(f, file_idx, &bytes_in_sector));
@@ -312,14 +372,14 @@ FFatResult file_create_dir(FFat32* f, char* path, uint32_t fat_datetime)
     uint32_t parent_dir_cluster;
     if (directory) {
         FPathLocation path_location;
-        TRY(file_find_path(f, directory, ATTR_DIR, &path_location))
+        TRY(file_find_path(f, directory, ATTR_DIR, &path_location, NULL))
         parent_dir_cluster = path_location.data_cluster;
     } else {
         parent_dir_cluster = current_dir_cluster;
     }
     
     // check if file/directory already exists
-    FFatResult result = find_file_in_dir(f, basename, basename + strlen(basename), parent_dir_cluster, ATTR_ANY, NULL);
+    FFatResult result = find_file_in_dir(f, basename, basename + strlen(basename), parent_dir_cluster, ATTR_ANY, NULL, NULL);
     if (result == F_OK)
         return F_FILE_ALREADY_EXISTS;
     else if (result != F_PATH_NOT_FOUND)

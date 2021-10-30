@@ -48,7 +48,22 @@ static FFatResult f_cd(FFat32* f)
 
 static FFatResult f_mkdir(FFat32* f, uint32_t fat_datetime)
 {
-    TRY(file_create_dir(f, (const char*) f->buffer, fat_datetime))
+    TRY(file_create_dir(f, (char*) f->buffer, fat_datetime))
+    return F_OK;
+}
+
+static FFatResult f_open(FFat32* f)
+{
+    FILE_IDX file_idx;
+    TRY(file_open(f, (char *) f->buffer, &file_idx))
+    BUF_SET8(f, 0, file_idx);
+    return F_OK;
+}
+
+static FFatResult f_read(FFat32* f)
+{
+    FILE_IDX file_idx = BUF_GET8(f, 0);
+    TRY(file_read(f, file_idx))
     return F_OK;
 }
 
@@ -64,9 +79,9 @@ FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime)
         case F_CD:            f->reg.last_operation_result = f_cd(f);                  break;
         case F_MKDIR:         f->reg.last_operation_result = f_mkdir(f, fat_datetime); break;
         case F_RMDIR:         break;
-        case F_OPEN:          break;
+        case F_OPEN:          f->reg.last_operation_result = f_open(f);                break;
         case F_CLOSE:         break;
-        case F_READ:          break;
+        case F_READ:          f->reg.last_operation_result = f_read(f);                break;
         case F_WRITE:         break;
         case F_STAT:          break;
         case F_RM:            break;
@@ -74,6 +89,29 @@ FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime)
         default:              f->reg.last_operation_result = F_INCORRECT_OPERATION;
     }
     return f->reg.last_operation_result;
+}
+
+const char* f_error(FFatResult result)
+{
+    switch (result) {
+        case F_OK:                       return "Ok";
+        case F_MORE_DATA:                return "Ok, more data available";
+        case F_IO_ERROR:                 return "I/O error";
+        case F_INCORRECT_OPERATION:      return "Incorrect operation";
+        case F_NOT_FAT_32:               return "Not a Fat32 filesystem";
+        case F_BYTES_PER_SECTOR_NOT_512: return "Bytes per sector is not 512 bytes";
+        case F_PATH_NOT_FOUND:           return "Path not found";
+        case F_FILE_PATH_TOO_LONG:       return "File path too long";
+        case F_INVALID_FILENAME:         return "Invalid filename";
+        case F_DEVICE_FULL:              return "Device is full";
+        case F_DIR_NOT_EMPTY:            return "Directory not empty";
+        case F_NOT_A_DIRECTORY:          return "Not a directory";
+        case F_FILE_ALREADY_EXISTS:      return "File already exists";
+        case F_TOO_MANY_FILES_OPEN:      return "Too many files open";
+        case F_INVALID_FILE_INDEX:       return "Invalid file index";
+        case F_FILE_NOT_OPEN:            return "File is not open";
+        default:                         return "Unexpected error";
+    }
 }
 
 #ifdef FFAT_DEBUG
