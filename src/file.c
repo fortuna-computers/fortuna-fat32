@@ -240,7 +240,6 @@ FFatResult file_append_cluster(FFat32* f, FILE_IDX file_idx)
 
 FFatResult file_close(FFat32* f, FILE_IDX file_idx)
 {
-    TRY(file_check_open(f, file_idx))
     file_list[file_idx].open = false;
     return F_OK;
 }

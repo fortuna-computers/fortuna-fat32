@@ -54,7 +54,7 @@ static FFatResult f_mkdir(FFat32* f, uint32_t fat_datetime)
 
 static FFatResult f_open(FFat32* f)
 {
-    FILE_IDX file_idx;
+    FILE_IDX file_idx = 0;
     TRY(file_open(f, (char *) f->buffer, &file_idx))
     BUF_SET8(f, 0, file_idx);
     return F_OK;
@@ -64,6 +64,13 @@ static FFatResult f_read(FFat32* f)
 {
     FILE_IDX file_idx = BUF_GET8(f, 0);
     TRY(file_read(f, file_idx))
+    return F_OK;
+}
+
+static FFatResult f_close(FFat32* f)
+{
+    FILE_IDX file_idx = BUF_GET8(f, 0);
+    TRY(file_close(f, file_idx))
     return F_OK;
 }
 
@@ -80,7 +87,7 @@ FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime)
         case F_MKDIR:         f->reg.last_operation_result = f_mkdir(f, fat_datetime); break;
         case F_RMDIR:         break;
         case F_OPEN:          f->reg.last_operation_result = f_open(f);                break;
-        case F_CLOSE:         break;
+        case F_CLOSE:         f->reg.last_operation_result = f_close(f);               break;
         case F_READ:          f->reg.last_operation_result = f_read(f);                break;
         case F_WRITE:         break;
         case F_STAT:          break;
@@ -116,6 +123,7 @@ const char* f_error(FFatResult result)
 
 #ifdef FFAT_DEBUG
 #include <stdio.h>
+#include "io.h"
 
 void f_fat32_debug(FFat32* f)
 {

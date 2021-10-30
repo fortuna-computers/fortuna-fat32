@@ -50,13 +50,13 @@ static void run_tests(Scenario const& scenario, std::vector<Test> const& tests, 
             exit(EXIT_FAILURE);
         }
         
-        test.execute(ffat, scenario);
-        scenario.remount();
-        if (test.verify(buffer, scenario)) {
+        try {
+            test.execute(ffat, scenario);
+            scenario.remount();
+            test.verify(buffer, scenario);
             std::cout << GRN "\u2713" RST;
-        } else {
+        } catch (std::exception& e) {
             std::cout << RED "X" RST;
-            // exit(1);
         }
         std::cout.flush();
     

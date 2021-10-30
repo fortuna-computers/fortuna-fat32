@@ -13,12 +13,12 @@ class Test {
 public:
     Test(std::string const& name,
          std::function<void(FFat32*, Scenario const&)> execute,
-         std::function<bool(uint8_t const*, Scenario const&)> verify)
+         std::function<void(uint8_t const*, Scenario const&)> verify)
             : name(name), execute(execute), verify(verify) {}
             
     const std::string name;
     const std::function<void(FFat32*, Scenario const&)> execute;
-    const std::function<bool(uint8_t const*, Scenario const&)> verify;
+    const std::function<void(uint8_t const*, Scenario const&)> verify;
 };
 
 #endif

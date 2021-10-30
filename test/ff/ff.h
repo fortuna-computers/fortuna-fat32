@@ -337,7 +337,7 @@ int f_printf (FIL* fp, const TCHAR* str, ...);						/* Put a formatted string to
 TCHAR* f_gets (TCHAR* buff, int len, FIL* fp);						/* Get a string from the file */
 
 #define f_eof(fp) ((int)((fp)->fptr == (fp)->obj.objsize))
-#define f_error(fp) ((fp)->err)
+// #define f_error(fp) ((fp)->err)
 #define f_tell(fp) ((fp)->fptr)
 #define f_size(fp) ((fp)->obj.objsize)
 #define f_rewind(fp) f_lseek((fp), 0)

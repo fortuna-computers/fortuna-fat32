@@ -10,6 +10,24 @@
 static std::vector<File> directory;
 static FFatResult result;
 static uint32_t file_sector_length;
+static std::string file_contents;
+
+static FRESULT check_fs(FRESULT fresult) {
+    if (fresult != FR_OK)
+        throw std::runtime_error("Return != FR_OK (" + std::to_string(fresult) + ")");
+    return fresult;
+}
+
+static FFatResult check_f(FFatResult r) {
+    if (r != F_OK && r != F_MORE_DATA)
+        throw std::runtime_error(f_error(r));
+    return r;
+}
+
+static void assert(bool assertion) {
+    if (!assertion)
+        throw std::runtime_error("Assertion failed.");
+}
 
 std::vector<Test> prepare_tests()
 {
@@ -25,13 +43,12 @@ std::vector<Test> prepare_tests()
             "Load boot sector",
             
             [&](FFat32* ffat, Scenario const&) {
-                result = f_fat32(ffat, F_BOOT, 0);
+                check_f(f_fat32(ffat, F_BOOT, 0));
             },
             
             [&](uint8_t const* buffer, Scenario const&) {
-                return result == F_OK
-                       && buffer[0x0] == 0xeb
-                       && *(uint16_t *) &buffer[510] == 0xaa55;
+                assert(buffer[0x0] == 0xeb);
+                assert(*(uint16_t *) &buffer[510] == 0xaa55);
             }
     );
 
@@ -39,13 +56,13 @@ std::vector<Test> prepare_tests()
             "Check disk space (pre-existing)",
             
             [](FFat32* ffat, Scenario const&) {
-                f_fat32(ffat, F_FREE, 0);
+                check_f(f_fat32(ffat, F_FREE, 0));
             },
             
             [](uint8_t const* buffer, Scenario const& scenario) {
                 uint32_t free_ = *(uint32_t *) buffer;
                 DWORD found = scenario.get_free_space();
-                return free_ == found;
+                assert(free_ == found);
             }
     );
 
@@ -53,14 +70,14 @@ std::vector<Test> prepare_tests()
             "Check disk space (calculate)",
 
             [](FFat32* ffat, Scenario const&) {
-                f_fat32(ffat, F_FSINFO_RECALC, 0);
-                f_fat32(ffat, F_FREE, 0);
+                check_f(f_fat32(ffat, F_FSINFO_RECALC, 0));
+                check_f(f_fat32(ffat, F_FREE, 0));
             },
 
             [](uint8_t const* buffer, Scenario const& scenario) {
                 uint32_t free_ = *(uint32_t *) buffer;
                 DWORD found = scenario.get_free_space();
-                return abs((int) free_ - (int) found) < 4096;
+                assert(abs((int) free_ - (int) found) < 4096);
             }
     );
     
@@ -80,9 +97,7 @@ std::vector<Test> prepare_tests()
                 FFatResult r;
                 ffat->buffer[0] = F_START_OVER;
                 do {
-                    r = f_fat32(ffat, F_DIR, 0);
-                    if (r != F_OK && r != F_MORE_DATA)
-                        throw std::runtime_error("F_DIR reported error " + std::to_string(r));
+                    r = check_f(f_fat32(ffat, F_DIR, 0));
                     add_files_to_dir_structure(ffat->buffer, directory);
                     ffat->buffer[0] = F_CONTINUE;
                 } while (r == F_MORE_DATA);
@@ -91,24 +106,18 @@ std::vector<Test> prepare_tests()
             [&](uint8_t const*, Scenario const&) {
                 DIR dp;
                 FILINFO filinfo;
-                if (f_opendir(&dp, "/") != FR_OK)
-                    throw std::runtime_error("`f_opendir` reported error");
+                check_fs(f_opendir(&dp, "/"));
     
                 for (;;) {
-                    if (f_readdir(&dp, &filinfo)  != FR_OK)
-                        throw std::runtime_error("`f_readdir` reported error");
+                    check_fs(f_readdir(&dp, &filinfo));
         
                     if (filinfo.fname[0] == '\0')
                         break;
         
-                    if (!find_file_in_directory(&filinfo, directory))
-                        return false;
+                    assert(find_file_in_directory(&filinfo, directory));
                 }
     
-                if (f_closedir(&dp) != FR_OK)
-                    throw std::runtime_error("`f_opendir` reported error");
-    
-                return true;
+                check_fs(f_closedir(&dp));
             }
     );
 
@@ -124,16 +133,10 @@ std::vector<Test> prepare_tests()
             
             [&](uint8_t const* buffer, Scenario const& scenario) {
                 if (scenario.disk_state == Scenario::DiskState::Complete) {
-                    if (result != F_OK)
-                        return false;
-                    
-                    if (!check_for_files_in_directory(buffer, directory, { "FORTUNA", "WORLD" }))
-                        return false;
-                    
-                    return true;
-                    
+                    check_f(result);
+                    assert(check_for_files_in_directory(buffer, directory, { "FORTUNA", "WORLD" }));
                 } else {
-                    return result == F_PATH_NOT_FOUND;
+                    assert(result == F_PATH_NOT_FOUND);
                 }
             }
     );
@@ -150,16 +153,10 @@ std::vector<Test> prepare_tests()
 
             [&](uint8_t const* buffer, Scenario const& scenario) {
                 if (scenario.disk_state == Scenario::DiskState::Complete) {
-                    if (result != F_OK)
-                        return false;
-        
-                    if (!check_for_files_in_directory(buffer, directory, { "FORTUNA", "WORLD" }))
-                        return false;
-        
-                    return true;
-        
+                    check_f(result);
+                    assert(check_for_files_in_directory(buffer, directory, { "FORTUNA", "WORLD" }));
                 } else {
-                    return result == F_PATH_NOT_FOUND;
+                    assert(result == F_PATH_NOT_FOUND);
                 }
             }
     );
@@ -180,16 +177,10 @@ std::vector<Test> prepare_tests()
             
             [&](uint8_t const* buffer, Scenario const& scenario) {
                 if (scenario.disk_state == Scenario::DiskState::Complete) {
-                    if (result != F_OK)
-                        return false;
-                    
-                    if (!check_for_files_in_directory(buffer, directory, { "HELLO.TXT" }))
-                        return false;
-                    
-                    return true;
-                    
+                    check_f(result);
+                    assert(check_for_files_in_directory(buffer, directory, { "HELLO.TXT" }));
                 } else {
-                    return result == F_PATH_NOT_FOUND;
+                    assert(result == F_PATH_NOT_FOUND);
                 }
             }
     );
@@ -201,17 +192,14 @@ std::vector<Test> prepare_tests()
                 strcpy(reinterpret_cast<char*>(ffat->buffer), "/");
                 result = f_fat32(ffat, F_CD, 0);
                 ffat->buffer[0] = F_START_OVER;
-                f_fat32(ffat, F_DIR, 0);
+                check_f(f_fat32(ffat, F_DIR, 0));
             },
             
             [&](uint8_t const* buffer, Scenario const& scenario) {
-                if (result != F_OK)
-                    return false;
-                
                 std::vector<std::string> files;
                 switch (scenario.disk_state) {
                     case Scenario::DiskState::Empty:
-                        return true;
+                        return;
                     case Scenario::DiskState::Complete:
                         files = { "HELLO", "FORTUNA.DAT", "TAGS.TXT" };
                         break;
@@ -225,10 +213,7 @@ std::vector<Test> prepare_tests()
                         break;
                 }
                 
-                if (!check_for_files_in_directory(buffer, directory, files))
-                    return false;
-                
-                return true;
+                assert(check_for_files_in_directory(buffer, directory, files));
             }
     );
 
@@ -466,31 +451,33 @@ std::vector<Test> prepare_tests()
     tests.emplace_back(
             "Open small existing file, read it and close it.",
             
-            [&](FFat32* ffat, Scenario const&) {
+            [&](FFat32* ffat, Scenario const& scenario) {
                 strcpy(reinterpret_cast<char*>(ffat->buffer), "/FORTUNA.DAT");
-                result = f_fat32(ffat, F_OPEN, 0);
-                if (result != F_OK)
-                    return;
                 
-                result = f_fat32(ffat, F_READ, 0);
-                if (result != F_OK)
+                FFatResult r = f_fat32(ffat, F_OPEN, 0);
+                if (scenario.disk_state == Scenario::DiskState::Complete) {
+                    check_f(r);
+                } else {
+                    assert(r == F_PATH_NOT_FOUND);
                     return;
+                }
+    
+                uint8_t file_idx = ffat->buffer[0];
+                
+                check_f(f_fat32(ffat, F_READ, 0));  // file idx is already set on buffer
                 file_sector_length = ffat->reg.file_sector_length;
+                file_contents = (const char *) ffat->buffer;
                 
-                result = f_fat32(ffat, F_CLOSE, 0);
+                ffat->buffer[0] = file_idx;
+                check_f(f_fat32(ffat, F_CLOSE, 0));
             },
 
-            [&](uint8_t const* buffer, Scenario const& scenario) {
+            [&](uint8_t const*, Scenario const& scenario) {
                 if (scenario.disk_state != Scenario::DiskState::Complete)
-                    return result == F_PATH_NOT_FOUND;
+                    return;
                 
-                if (strcmp((const char *) buffer, "Hello world!") != 0)
-                    return false;
-                
-                if (file_sector_length != strlen("Hello world!"))
-                    return false;
-                
-                return true;
+                assert(file_contents == "Hello world!");
+                assert(file_sector_length == file_contents.size());
             }
     );
     
