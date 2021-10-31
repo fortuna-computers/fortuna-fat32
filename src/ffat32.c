@@ -83,9 +83,10 @@ static FFatResult f_seek(FFat32* f)
     FILE_IDX file_idx = BUF_GET8(f, 0);
     uint32_t count = BUF_GET32(f, 1);
     uint16_t file_sector_length;
-    TRY(file_seek_forward(f, file_idx, count, &file_sector_length));
+    FFatResult result = file_seek_forward(f, file_idx, count, &file_sector_length);
+    TRY(result)
     f->reg.file_sector_length = file_sector_length;
-    return F_OK;
+    return result;
 }
 
 FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime)

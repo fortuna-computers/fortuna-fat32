@@ -221,7 +221,6 @@ FFatResult file_read(FFat32* f, FILE_IDX file_idx, uint16_t* file_sector_length)
         *file_sector_length = byte_counter;
         return F_OK;
     } else {
-        // f->reg.file_sector_length = BYTES_PER_SECTOR;
         *file_sector_length = BYTES_PER_SECTOR;
         return F_MORE_DATA;
     }
@@ -229,8 +228,30 @@ FFatResult file_read(FFat32* f, FILE_IDX file_idx, uint16_t* file_sector_length)
 
 FFatResult file_seek_forward(FFat32* f, FILE_IDX file_idx, uint32_t count, uint16_t* file_sector_length)
 {
+    TRY(file_check_open(f, file_idx))
+    FFile* file = &file_list[file_idx];
     
-    return F_OK; // TODO
+    for (uint32_t i = 0; i < count; ++i) {
+        // advance counter
+        TRY(sections_fat_calculate_next_cluster_sector(f, &file->current_sector.cluster, &file->current_sector.sector))
+        file->byte_counter -= BYTES_PER_SECTOR;
+        
+        // read from disk
+        bool last_iteration = (i == (count - 1));
+        if (file->current_sector.cluster == FAT_EOC || file->current_sector.cluster == FAT_EOF || file->byte_counter < BYTES_PER_SECTOR) {
+            if (last_iteration) {
+                *file_sector_length = file->byte_counter;
+                return F_OK;
+            } else {
+                return F_SEEK_PAST_EOF;
+            }
+        } else if (last_iteration) {
+            *file_sector_length = BYTES_PER_SECTOR;
+            return F_MORE_DATA;
+        }
+    }
+    
+    return F_IO_ERROR;
 }
 
 FFatResult file_append_cluster(FFat32* f, FILE_IDX file_idx)

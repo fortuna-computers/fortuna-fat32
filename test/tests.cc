@@ -561,7 +561,6 @@ std::vector<Test> prepare_tests()
             }
     );
 
-#if 0
     tests.emplace_back(
             "Seek while reading file",
             
@@ -583,7 +582,8 @@ std::vector<Test> prepare_tests()
                 
                 ffat->buffer[0] = file_idx;
                 *((uint32_t *) &ffat->buffer[1]) = 12;
-                check_f(f_fat32(ffat, F_SEEK, 0));  // move forward 12 sectors
+                result = check_f(f_fat32(ffat, F_SEEK, 0));  // move forward 12 sectors
+                file_sector_length = ffat->reg.file_sector_length;
     
                 ffat->buffer[0] = file_idx;
                 check_f(f_fat32(ffat, F_READ, 0)); // read the 13th sector
@@ -600,12 +600,12 @@ std::vector<Test> prepare_tests()
                 
                 if (scenario.disk_state != Scenario::DiskState::Complete)
                     return;
-                
+    
+                assert(result == F_MORE_DATA);
                 assert(file_contents == tags_txt);
-                assert(file_sector_length == tags_txt.length() % BYTES_PER_SECTOR);
+                assert(file_sector_length == BYTES_PER_SECTOR);
             }
     );
-#endif
     
     // TODO - seek past EOF
     
