@@ -242,7 +242,7 @@ FFatResult file_seek_forward(FFat32* f, FILE_IDX file_idx, uint32_t count, uint1
         // read from disk
         bool last_iteration = (i == (count - 1));
         if (file->current_sector.cluster == FAT_EOC || file->current_sector.cluster == FAT_EOF || file->byte_counter < BYTES_PER_SECTOR) {
-            if (last_iteration) {
+            if (last_iteration || count == (uint32_t) -1) {
                 *file_sector_length = file->byte_counter;
                 return F_OK;
             } else {

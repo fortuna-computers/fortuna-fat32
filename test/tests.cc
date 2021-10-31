@@ -646,9 +646,9 @@ std::vector<Test> prepare_tests()
                 if (scenario.disk_state != Scenario::DiskState::Complete)
                     return;
     
-                size_t last_sector = (const char *) _binary_test_TAGS_TXT_end - (const char *) _binary_test_TAGS_TXT_start;
-                last_sector /= BYTES_PER_SECTOR;
-                static std::string tags_txt(((const char *) _binary_test_TAGS_TXT_start) + (last_sector * BYTES_PER_SECTOR));
+                size_t size = (const char *) _binary_test_TAGS_TXT_end - (const char *) _binary_test_TAGS_TXT_start;
+                size_t last_sector = size / BYTES_PER_SECTOR;
+                static std::string tags_txt(((const char *) _binary_test_TAGS_TXT_start) + (last_sector * BYTES_PER_SECTOR), size % BYTES_PER_SECTOR);
                 
                 assert(result == F_OK);
                 assert(file_contents == tags_txt);
