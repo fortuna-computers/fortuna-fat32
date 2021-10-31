@@ -199,7 +199,7 @@ static FFatResult file_check_open(FFat32* f, FILE_IDX file_idx)
     return F_OK;
 }
 
-FFatResult file_read(FFat32* f, FILE_IDX file_idx, uint16_t* file_sector_length)
+FFatResult file_read(FFat32* f, FILE_IDX file_idx, uint16_t* sector_size)
 {
     TRY(file_check_open(f, file_idx))
     FFile* file = &file_list[file_idx];
@@ -218,15 +218,21 @@ FFatResult file_read(FFat32* f, FILE_IDX file_idx, uint16_t* file_sector_length)
         memset(&f->buffer[byte_counter], 0, BYTES_PER_SECTOR - byte_counter);
     
     if (file->current_sector.cluster == FAT_EOC || file->current_sector.cluster == FAT_EOF || byte_counter < BYTES_PER_SECTOR) {
-        *file_sector_length = byte_counter;
+        *sector_size = byte_counter;
         return F_OK;
     } else {
-        *file_sector_length = BYTES_PER_SECTOR;
+        *sector_size = BYTES_PER_SECTOR;
         return F_MORE_DATA;
     }
 }
 
-FFatResult file_seek_forward(FFat32* f, FILE_IDX file_idx, uint32_t count, uint16_t* file_sector_length)
+FFatResult file_write(FFat32* f, FILE_IDX file_idx, uint16_t sector_size)
+{
+    // TODO - adjust file size
+    return F_OK;
+}
+
+FFatResult file_seek_forward(FFat32* f, FILE_IDX file_idx, uint32_t count, uint16_t* sector_size)
 {
     TRY(file_check_open(f, file_idx))
     FFile* file = &file_list[file_idx];
@@ -243,13 +249,13 @@ FFatResult file_seek_forward(FFat32* f, FILE_IDX file_idx, uint32_t count, uint1
         bool last_iteration = (i == (count - 1));
         if (file->current_sector.cluster == FAT_EOC || file->current_sector.cluster == FAT_EOF || file->byte_counter < BYTES_PER_SECTOR) {
             if (last_iteration || count == (uint32_t) -1) {
-                *file_sector_length = file->byte_counter;
+                *sector_size = file->byte_counter;
                 return F_OK;
             } else {
                 return F_SEEK_PAST_EOF;
             }
         } else if (last_iteration) {
-            *file_sector_length = BYTES_PER_SECTOR;
+            *sector_size = BYTES_PER_SECTOR;
             return F_MORE_DATA;
         }
     }
