@@ -226,6 +226,11 @@ FFatResult file_read(FFat32* f, FILE_IDX file_idx)
     }
 }
 
+FFatResult file_seek_forward(FFat32* f, FILE_IDX file_idx, uint32_t count)
+{
+    return F_OK; // TODO
+}
+
 FFatResult file_seek_end(FFat32* f, FILE_IDX file_idx, uint16_t* bytes_in_sector)
 {
     TRY(file_check_open(f, file_idx))

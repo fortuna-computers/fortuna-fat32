@@ -74,6 +74,14 @@ static FFatResult f_close(FFat32* f)
     return F_OK;
 }
 
+static FFatResult f_seek(FFat32* f)
+{
+    FILE_IDX file_idx = BUF_GET8(f, 0);
+    uint32_t count = BUF_GET32(f, 1);
+    TRY(file_seek_forward(f, file_idx, count));
+    return F_OK;
+}
+
 FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime)
 {
     switch (operation) {
@@ -89,6 +97,7 @@ FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime)
         case F_OPEN:          f->reg.last_operation_result = f_open(f);                break;
         case F_CLOSE:         f->reg.last_operation_result = f_close(f);               break;
         case F_READ:          f->reg.last_operation_result = f_read(f);                break;
+        case F_SEEK:          f->reg.last_operation_result = f_seek(f);                break;
         case F_WRITE:         break;
         case F_STAT:          break;
         case F_RM:            break;

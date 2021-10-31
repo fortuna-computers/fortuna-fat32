@@ -561,7 +561,51 @@ std::vector<Test> prepare_tests()
             }
     );
     
-    // TODO - seek into file
+    tests.emplace_back(
+            "Seek while reading file",
+            
+            [&](FFat32* ffat, Scenario const& scenario) {
+                strcpy(reinterpret_cast<char*>(ffat->buffer), "TAGS.TXT");
+                
+                FFatResult r = f_fat32(ffat, F_OPEN, 0);
+                if (scenario.disk_state == Scenario::DiskState::Complete) {
+                    check_f(r);
+                } else {
+                    assert(r == F_PATH_NOT_FOUND);
+                    return;
+                }
+                
+                uint8_t file_idx = ffat->buffer[0];
+    
+                ffat->buffer[0] = file_idx;
+                check_f(f_fat32(ffat, F_READ, 0)); // skip first sector
+                
+                ffat->buffer[0] = file_idx;
+                *((uint32_t *) &ffat->buffer[1]) = 12;
+                check_f(f_fat32(ffat, F_SEEK, 0));  // move forward 12 sectors
+    
+                ffat->buffer[0] = file_idx;
+                check_f(f_fat32(ffat, F_READ, 0)); // read the 13th sector
+                file_contents = (const char *) ffat->buffer;
+                
+                ffat->buffer[0] = file_idx;
+                check_f(f_fat32(ffat, F_CLOSE, 0));
+            },
+            
+            [&](uint8_t const*, Scenario const& scenario) {
+                extern uint8_t _binary_test_TAGS_TXT_start[];
+                
+                static std::string tags_txt(((const char *) _binary_test_TAGS_TXT_start) + (13 * BYTES_PER_SECTOR), BYTES_PER_SECTOR);
+                
+                if (scenario.disk_state != Scenario::DiskState::Complete)
+                    return;
+                
+                assert(file_contents == tags_txt);
+                assert(file_sector_length == tags_txt.length() % BYTES_PER_SECTOR);
+            }
+    );
+    
+    // TODO - seek past EOF
     
     // TODO - create file, write file
     
