@@ -484,7 +484,7 @@ std::vector<Test> prepare_tests()
     );
     
     tests.emplace_back(
-            "Open small existing file, read it and close it.",
+            "Open large existing file, read it and close it.",
             
             [&](FFat32* ffat, Scenario const& scenario) {
                 strcpy(reinterpret_cast<char*>(ffat->buffer), "TAGS.TXT");
@@ -522,13 +522,50 @@ std::vector<Test> prepare_tests()
                     return;
                 
                 assert(file_contents == tags_txt);
+                assert(file_sector_length == tags_txt.length() % BYTES_PER_SECTOR);
             }
     );
     
     
-    // TODO - read with full path
+    tests.emplace_back(
+            "Open file with full path, read it and close it.",
+            
+            [&](FFat32* ffat, Scenario const& scenario) {
+                strcpy(reinterpret_cast<char*>(ffat->buffer), "/HELLO/WORLD/HELLO.TXT");
+                
+                FFatResult r = f_fat32(ffat, F_OPEN, 0);
+                if (scenario.disk_state == Scenario::DiskState::Complete) {
+                    check_f(r);
+                } else {
+                    assert(r == F_PATH_NOT_FOUND);
+                    return;
+                }
+                
+                uint8_t file_idx = ffat->buffer[0];
+                
+                FFatResult rr = f_fat32(ffat, F_READ, 0);  // file idx is already set on buffer
+                assert(rr == F_OK);
+                file_sector_length = ffat->reg.file_sector_length;
+                file_contents = (const char *) ffat->buffer;
+                
+                ffat->buffer[0] = file_idx;
+                check_f(f_fat32(ffat, F_CLOSE, 0));
+            },
+            
+            [&](uint8_t const*, Scenario const& scenario) {
+                if (scenario.disk_state != Scenario::DiskState::Complete)
+                    return;
+                
+                assert(file_contents == "Hello world!");
+                assert(file_sector_length == file_contents.size());
+            }
+    );
+    
+    // TODO - seek into file
     
     // TODO - create file, write file
+    
+    // TODO - seek to end
     
     // endregion
     

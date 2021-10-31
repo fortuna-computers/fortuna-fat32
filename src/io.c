@@ -65,9 +65,11 @@ FFatResult io_write_raw_sector(FFat32* f, uint64_t sector)
 
 #ifdef FFAT_DEBUG
 #include <stdio.h>
+#include <inttypes.h>
 
 void io_debug(FFat32* f)
 {
-    printf("Partition starting sector: 0x%X\n", partition_starting_sector);
+    (void) f;
+    printf("Partition starting sector: 0x%" PRIx32 "\n", partition_starting_sector);
 }
 #endif

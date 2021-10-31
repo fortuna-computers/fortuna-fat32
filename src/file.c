@@ -133,7 +133,7 @@ static FFatResult file_find_path(FFat32* f, const char* path, uint8_t attrib_mas
         if (current_path[0] == '\0')
             break;
         char* end = strchr(current_path, '/');
-        TRY(find_file_in_dir(f, current_path, end, dir_cluster, attrib_mask, location, file_size))
+        TRY(find_file_in_dir(f, current_path, end, dir_cluster, end ? ATTR_DIR : attrib_mask, location, file_size))
         if (!end)
             break;
         dir_cluster = location->data_cluster;
@@ -150,6 +150,8 @@ static FFatResult file_find_path(FFat32* f, const char* path, uint8_t attrib_mas
 
 static FFatResult file_open_existing_file_in_cluster(FFat32* f, uint32_t file_cluster_number, FILE_IDX* file_idx, uint32_t file_size)
 {
+    (void) f;
+    
     if (*file_idx == DIR_FILE_IDX) {
         file_list[DIR_FILE_IDX] = (FFile) {
             .current_sector = (FCurrentSector) { file_cluster_number, 0 },
@@ -228,6 +230,7 @@ FFatResult file_seek_end(FFat32* f, FILE_IDX file_idx, uint16_t* bytes_in_sector
 {
     TRY(file_check_open(f, file_idx))
     // TODO
+    (void) bytes_in_sector;
     return F_OK;
 }
 
@@ -235,11 +238,13 @@ FFatResult file_append_cluster(FFat32* f, FILE_IDX file_idx)
 {
     TRY(file_check_open(f, file_idx))
     // TODO
+    (void) file_idx;
     return F_OK;
 }
 
 FFatResult file_close(FFat32* f, FILE_IDX file_idx)
 {
+    (void) f;
     file_list[file_idx].open = false;
     return F_OK;
 }
@@ -315,6 +320,12 @@ static FFatResult file_insert_directory_record(FFat32* f, uint8_t file_idx, uint
                                                uint32_t fat_datetime, uint32_t new_file_data_cluster)
 {
     // TODO
+    (void) f;
+    (void) file_idx;
+    (void) bytes_in_dir_sector;
+    (void) basename;
+    (void) fat_datetime;
+    (void) new_file_data_cluster;
     return F_OK;
 }
 

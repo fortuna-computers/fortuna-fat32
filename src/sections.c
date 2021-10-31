@@ -112,6 +112,7 @@ FFatResult sections_fat_calculate_next_cluster_sector(FFat32* f, uint32_t* clust
 FFatResult sections_fat_reserve_cluster_for_new_file(FFat32* f, uint32_t* new_file_cluster_number)
 {
     // TODO
+    (void) f; (void) new_file_cluster_number;
     return F_OK;
 }
 

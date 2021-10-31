@@ -56,7 +56,8 @@ typedef enum FFatResult {
     F_FILE_ALREADY_EXISTS       = 0x0c,  // trying to create a file that already exists
     F_TOO_MANY_FILES_OPEN       = 0x0d,
     F_INVALID_FILE_INDEX        = 0x0e,
-    F_FILE_NOT_OPEN             = 0x0f
+    F_FILE_NOT_OPEN             = 0x0f,
+    F_SEEK_PAST_EOF             = 0x10,
 } FFatResult;
 
 typedef enum FContinuation {

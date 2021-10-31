@@ -2,14 +2,14 @@ FORTUNA_FAT32 = src/io.o src/sections.o src/file.o src/ffat32.o
 TEST_OBJ = test/main.o test/tests.o test/helper.o test/scenario.o test/diskio.o test/ff/ff.o \
 	test/tags.o
 CFLAGS = -std=c11
-CPPFLAGS = -Wall -Wextra -DFFAT_DEBUG=1
+CPPFLAGS = -Wall -Wextra
 CXXFLAGS = -std=c++17
 MCU = atmega16
 MAX_CODE_SIZE=8192
 
 all: ftest
 
-ftest: CPPFLAGS += -g -O0
+ftest: CPPFLAGS += -g -O0 -DFFAT_DEBUG=1
 ftest: ${FORTUNA_FAT32} ${TEST_OBJ}
 	g++ $^ -o $@ `pkg-config --libs libbrotlicommon libbrotlidec`
 .PHONY: ftest

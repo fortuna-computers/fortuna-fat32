@@ -117,6 +117,7 @@ const char* f_error(FFatResult result)
         case F_TOO_MANY_FILES_OPEN:      return "Too many files open";
         case F_INVALID_FILE_INDEX:       return "Invalid file index";
         case F_FILE_NOT_OPEN:            return "File is not open";
+        case F_SEEK_PAST_EOF:            return "Seeked past end-of-file";
         default:                         return "Unexpected error";
     }
 }
