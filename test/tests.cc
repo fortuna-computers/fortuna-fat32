@@ -666,7 +666,6 @@ std::vector<Test> prepare_tests()
             }
     );
     
-    /*
     tests.emplace_back(
             "Rewrite sector in existing file",
             
@@ -681,14 +680,10 @@ std::vector<Test> prepare_tests()
                     return;
                 }
                 
-                uint8_t file_idx = ffat->buffer[0];
+                strncpy((char *) ffat->buffer, SHORT_FILE, strlen(SHORT_FILE) + 1);
+                ffat->reg.F_SZ = strlen(SHORT_FILE) + 1;
+                check_f(f_fat32(ffat, F_WRITE, 0));  // file idx is already set on buffer
                 
-                FFatResult rr = f_fat32(ffat, F_READ, 0);  // file idx is already set on buffer
-                assert(rr == F_OK);
-                F_SZ = ffat->reg.F_SZ;
-                file_contents = (const char *) ffat->buffer;
-                
-                ffat->buffer[0] = file_idx;
                 check_f(f_fat32(ffat, F_CLOSE, 0));
             },
             
@@ -699,7 +694,6 @@ std::vector<Test> prepare_tests()
                 // TODO
             }
     );
-     */
     
     // TODO - append new sector to file
     
