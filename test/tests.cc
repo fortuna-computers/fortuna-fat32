@@ -608,6 +608,56 @@ std::vector<Test> prepare_tests()
     );
     
     tests.emplace_back(
+            "Seek to end",
+            
+            [&](FFat32* ffat, Scenario const& scenario) {
+                strcpy(reinterpret_cast<char*>(ffat->buffer), "TAGS.TXT");
+                
+                FFatResult r = f_fat32(ffat, F_OPEN, 0);
+                if (scenario.disk_state == Scenario::DiskState::Complete) {
+                    check_f(r);
+                } else {
+                    assert(r == F_PATH_NOT_FOUND);
+                    return;
+                }
+                
+                uint8_t file_idx = ffat->buffer[0];
+                
+                ffat->buffer[0] = file_idx;
+                check_f(f_fat32(ffat, F_READ, 0)); // skip first sector
+                
+                ffat->buffer[0] = file_idx;
+                *((uint32_t *) &ffat->buffer[1]) = (uint32_t) -1;
+                result = check_f(f_fat32(ffat, F_SEEK, 0));  // move to end
+                file_sector_length = ffat->reg.file_sector_length;
+                
+                ffat->buffer[0] = file_idx;
+                check_f(f_fat32(ffat, F_READ, 0)); // read last sector
+                file_contents = (const char *) ffat->buffer;
+                
+                ffat->buffer[0] = file_idx;
+                check_f(f_fat32(ffat, F_CLOSE, 0));
+            },
+            
+            [&](uint8_t const*, Scenario const& scenario) {
+                extern uint8_t _binary_test_TAGS_TXT_start[];
+                extern uint8_t _binary_test_TAGS_TXT_end[];
+    
+                if (scenario.disk_state != Scenario::DiskState::Complete)
+                    return;
+    
+                size_t last_sector = (const char *) _binary_test_TAGS_TXT_end - (const char *) _binary_test_TAGS_TXT_start;
+                last_sector /= BYTES_PER_SECTOR;
+                static std::string tags_txt(((const char *) _binary_test_TAGS_TXT_start) + (last_sector * BYTES_PER_SECTOR));
+                
+                assert(result == F_OK);
+                assert(file_contents == tags_txt);
+                assert(file_sector_length == tags_txt.length());
+            }
+    );
+    
+    
+    tests.emplace_back(
             "Seek past EOF",
             
             [&](FFat32* ffat, Scenario const& scenario) {
