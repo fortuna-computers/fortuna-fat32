@@ -691,7 +691,14 @@ std::vector<Test> prepare_tests()
                 if (scenario.disk_state != Scenario::DiskState::Complete)
                     return;
                 
-                // TODO
+                char buf[512];
+                FIL fp;
+                UINT br;
+                check_fs(f_open(&fp, "/FORTUNA.DAT", FA_OPEN_EXISTING | FA_READ));
+                check_fs(f_read(&fp, buf, 512, &br));
+                check_fs(f_close(&fp));
+                
+                assert(strcmp(buf, SHORT_FILE) == 0);
             }
     );
     
