@@ -57,13 +57,13 @@ static FFatResult f_open(FFat32* f)
 {
     FILE_IDX file_idx = 0;
     TRY(file_open(f, (char *) f->buffer, &file_idx))
-    BUF_SET8(f, 0, file_idx);
+    f->reg.F_FLN = file_idx;
     return F_OK;
 }
 
 static FFatResult f_read(FFat32* f)
 {
-    FILE_IDX file_idx = BUF_GET8(f, 0);
+    FILE_IDX file_idx = f->reg.F_FLN;
     uint16_t file_sector_length;
     FFatResult result = file_read(f, file_idx, &file_sector_length);
     TRY(result)
@@ -73,15 +73,15 @@ static FFatResult f_read(FFat32* f)
 
 static FFatResult f_close(FFat32* f)
 {
-    FILE_IDX file_idx = BUF_GET8(f, 0);
+    FILE_IDX file_idx = f->reg.F_FLN;
     TRY(file_close(f, file_idx))
     return F_OK;
 }
 
 static FFatResult f_seek(FFat32* f)
 {
-    FILE_IDX file_idx = BUF_GET8(f, 0);
-    uint32_t count = BUF_GET32(f, 1);
+    FILE_IDX file_idx = f->reg.F_FLN;
+    uint32_t count = BUF_GET32(f, 0);
     uint16_t file_sector_length;
     FFatResult result = file_seek_forward(f, file_idx, count, &file_sector_length);
     TRY(result)

@@ -465,14 +465,11 @@ std::vector<Test> prepare_tests()
                     return;
                 }
     
-                uint8_t file_idx = ffat->buffer[0];
-                
                 FFatResult rr = f_fat32(ffat, F_READ, 0);  // file idx is already set on buffer
                 assert(rr == F_OK);
                 file_sector_length = ffat->reg.F_SZ;
                 file_contents = (const char *) ffat->buffer;
                 
-                ffat->buffer[0] = file_idx;
                 check_f(f_fat32(ffat, F_CLOSE, 0));
             },
 
@@ -499,18 +496,14 @@ std::vector<Test> prepare_tests()
                     return;
                 }
                 
-                uint8_t file_idx = ffat->buffer[0];
-                
                 FFatResult rr;
                 file_contents = "";
                 do {
-                    ffat->buffer[0] = file_idx;
                     rr = check_f(f_fat32(ffat, F_READ, 0));  // file idx is already set on buffer
                     file_sector_length = ffat->reg.F_SZ;
                     file_contents.append((const char *) ffat->buffer, file_sector_length);
                 } while (rr == F_MORE_DATA);
                 
-                ffat->buffer[0] = file_idx;
                 check_f(f_fat32(ffat, F_CLOSE, 0));
             },
             
@@ -543,14 +536,11 @@ std::vector<Test> prepare_tests()
                     return;
                 }
                 
-                uint8_t file_idx = ffat->buffer[0];
-                
                 FFatResult rr = f_fat32(ffat, F_READ, 0);  // file idx is already set on buffer
                 assert(rr == F_OK);
                 file_sector_length = ffat->reg.F_SZ;
                 file_contents = (const char *) ffat->buffer;
                 
-                ffat->buffer[0] = file_idx;
                 check_f(f_fat32(ffat, F_CLOSE, 0));
             },
             
@@ -577,21 +567,15 @@ std::vector<Test> prepare_tests()
                     return;
                 }
                 
-                uint8_t file_idx = ffat->buffer[0];
-    
-                ffat->buffer[0] = file_idx;
                 check_f(f_fat32(ffat, F_READ, 0)); // skip first sector
                 
-                ffat->buffer[0] = file_idx;
-                *((uint32_t *) &ffat->buffer[1]) = 12;
+                *((uint32_t *) &ffat->buffer[0]) = 12;
                 result = check_f(f_fat32(ffat, F_SEEK, 0));  // move forward 12 sectors
                 file_sector_length = ffat->reg.F_SZ;
     
-                ffat->buffer[0] = file_idx;
                 check_f(f_fat32(ffat, F_READ, 0)); // read the 13th sector
                 file_contents = (const char *) ffat->buffer;
                 
-                ffat->buffer[0] = file_idx;
                 check_f(f_fat32(ffat, F_CLOSE, 0));
             },
             
@@ -623,21 +607,15 @@ std::vector<Test> prepare_tests()
                     return;
                 }
                 
-                uint8_t file_idx = ffat->buffer[0];
-                
-                ffat->buffer[0] = file_idx;
                 check_f(f_fat32(ffat, F_READ, 0)); // skip first sector
                 
-                ffat->buffer[0] = file_idx;
-                *((uint32_t *) &ffat->buffer[1]) = (uint32_t) -1;
+                *((uint32_t *) &ffat->buffer[0]) = (uint32_t) -1;
                 result = check_f(f_fat32(ffat, F_SEEK, 0));  // move to end
                 file_sector_length = ffat->reg.F_SZ;
                 
-                ffat->buffer[0] = file_idx;
                 check_f(f_fat32(ffat, F_READ, 0)); // read last sector
                 file_contents = (const char *) ffat->buffer;
                 
-                ffat->buffer[0] = file_idx;
                 check_f(f_fat32(ffat, F_CLOSE, 0));
             },
             
@@ -673,14 +651,10 @@ std::vector<Test> prepare_tests()
                     return;
                 }
                 
-                uint8_t file_idx = ffat->buffer[0];
-    
-                ffat->buffer[0] = file_idx;
-                *((uint32_t *) &ffat->buffer[1]) = 1;
+                *((uint32_t *) &ffat->buffer[0]) = 1;
                 result = f_fat32(ffat, F_SEEK, 0);  // move forward 1 sector
                 file_sector_length = ffat->reg.F_SZ;
     
-                ffat->buffer[0] = file_idx;
                 check_f(f_fat32(ffat, F_CLOSE, 0));
             },
             
