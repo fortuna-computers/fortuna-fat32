@@ -199,7 +199,7 @@ static FFatResult file_check_open(FFat32* f, FILE_IDX file_idx)
     return F_OK;
 }
 
-FFatResult file_read(FFat32* f, FILE_IDX file_idx)
+FFatResult file_read(FFat32* f, FILE_IDX file_idx, uint16_t* file_sector_length)
 {
     TRY(file_check_open(f, file_idx))
     FFile* file = &file_list[file_idx];
@@ -219,14 +219,16 @@ FFatResult file_read(FFat32* f, FILE_IDX file_idx)
     
     if (file->current_sector.cluster == FAT_EOC || file->current_sector.cluster == FAT_EOF || byte_counter < BYTES_PER_SECTOR) {
         f->reg.file_sector_length = byte_counter;
+        *file_sector_length = byte_counter;
         return F_OK;
     } else {
         f->reg.file_sector_length = BYTES_PER_SECTOR;
+        *file_sector_length = BYTES_PER_SECTOR;
         return F_MORE_DATA;
     }
 }
 
-FFatResult file_seek_forward(FFat32* f, FILE_IDX file_idx, uint32_t count)
+FFatResult file_seek_forward(FFat32* f, FILE_IDX file_idx, uint32_t count, uint16_t* file_sector_length)
 {
     return F_OK; // TODO
 }

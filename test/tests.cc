@@ -560,7 +560,7 @@ std::vector<Test> prepare_tests()
                 assert(file_sector_length == file_contents.size());
             }
     );
-    
+
     tests.emplace_back(
             "Seek while reading file",
             
