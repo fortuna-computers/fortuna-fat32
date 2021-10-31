@@ -5,7 +5,7 @@
 #error Sorry, only little endian platforms are supported right now.
 #endif
 
-#define TRY(expr) { FFatResult r = (expr); if (r != F_OK) return r; }
+#define TRY(expr) { FFatResult r = (expr); if (r != F_OK && r != F_MORE_DATA) return r; }
 
 #define BUF_GET8(f, pos)  (f->buffer[pos])
 #define BUF_GET16(f, pos) (*(uint16_t *) &f->buffer[pos])

@@ -218,11 +218,10 @@ FFatResult file_read(FFat32* f, FILE_IDX file_idx, uint16_t* file_sector_length)
         memset(&f->buffer[byte_counter], 0, BYTES_PER_SECTOR - byte_counter);
     
     if (file->current_sector.cluster == FAT_EOC || file->current_sector.cluster == FAT_EOF || byte_counter < BYTES_PER_SECTOR) {
-        f->reg.file_sector_length = byte_counter;
         *file_sector_length = byte_counter;
         return F_OK;
     } else {
-        f->reg.file_sector_length = BYTES_PER_SECTOR;
+        // f->reg.file_sector_length = BYTES_PER_SECTOR;
         *file_sector_length = BYTES_PER_SECTOR;
         return F_MORE_DATA;
     }
@@ -230,15 +229,8 @@ FFatResult file_read(FFat32* f, FILE_IDX file_idx, uint16_t* file_sector_length)
 
 FFatResult file_seek_forward(FFat32* f, FILE_IDX file_idx, uint32_t count, uint16_t* file_sector_length)
 {
+    
     return F_OK; // TODO
-}
-
-FFatResult file_seek_end(FFat32* f, FILE_IDX file_idx, uint16_t* bytes_in_sector)
-{
-    TRY(file_check_open(f, file_idx))
-    // TODO
-    (void) bytes_in_sector;
-    return F_OK;
 }
 
 FFatResult file_append_cluster(FFat32* f, FILE_IDX file_idx)
@@ -343,7 +335,7 @@ static FFatResult file_add_file_to_dir_in_cluster(FFat32* f, const char* basenam
     TRY(file_open_existing_file_in_cluster(f, dir_cluster, &file_idx, 0))
     
     uint16_t bytes_in_sector;
-    TRY(file_seek_end(f, file_idx, &bytes_in_sector));
+    TRY(file_seek_forward(f, file_idx, (uint32_t) -1, &bytes_in_sector))
     
     if (bytes_in_sector == BYTES_PER_SECTOR) {
         file_append_cluster(f, file_idx);

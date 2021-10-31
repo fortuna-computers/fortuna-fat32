@@ -36,8 +36,9 @@ static FFatResult f_fsinfo_recalc(FFat32* f)
 static FFatResult f_dir(FFat32* f)
 {
     FContinuation continuation = BUF_GET8(f, 0);
-    TRY(file_list_current_dir(f, continuation))
-    return F_OK;
+    FFatResult result = file_list_current_dir(f, continuation);
+    TRY(result)
+    return result;
 }
 
 static FFatResult f_cd(FFat32* f)
@@ -64,9 +65,10 @@ static FFatResult f_read(FFat32* f)
 {
     FILE_IDX file_idx = BUF_GET8(f, 0);
     uint16_t file_sector_length;
-    TRY(file_read(f, file_idx, &file_sector_length))
+    FFatResult result = file_read(f, file_idx, &file_sector_length);
+    TRY(result)
     f->reg.file_sector_length = file_sector_length;
-    return F_OK;
+    return result;
 }
 
 static FFatResult f_close(FFat32* f)

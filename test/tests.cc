@@ -561,6 +561,7 @@ std::vector<Test> prepare_tests()
             }
     );
 
+#if 0
     tests.emplace_back(
             "Seek while reading file",
             
@@ -604,6 +605,7 @@ std::vector<Test> prepare_tests()
                 assert(file_sector_length == tags_txt.length() % BYTES_PER_SECTOR);
             }
     );
+#endif
     
     // TODO - seek past EOF
     
