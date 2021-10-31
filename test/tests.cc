@@ -607,7 +607,38 @@ std::vector<Test> prepare_tests()
             }
     );
     
-    // TODO - seek past EOF
+    tests.emplace_back(
+            "Seek past EOF",
+            
+            [&](FFat32* ffat, Scenario const& scenario) {
+                strcpy(reinterpret_cast<char*>(ffat->buffer), "FORTUNA.DAT");
+                
+                FFatResult r = f_fat32(ffat, F_OPEN, 0);
+                if (scenario.disk_state == Scenario::DiskState::Complete) {
+                    check_f(r);
+                } else {
+                    assert(r == F_PATH_NOT_FOUND);
+                    return;
+                }
+                
+                uint8_t file_idx = ffat->buffer[0];
+    
+                ffat->buffer[0] = file_idx;
+                *((uint32_t *) &ffat->buffer[1]) = 1;
+                result = f_fat32(ffat, F_SEEK, 0);  // move forward 1 sector
+                file_sector_length = ffat->reg.file_sector_length;
+    
+                ffat->buffer[0] = file_idx;
+                check_f(f_fat32(ffat, F_CLOSE, 0));
+            },
+            
+            [&](uint8_t const*, Scenario const& scenario) {
+                if (scenario.disk_state != Scenario::DiskState::Complete)
+                    return;
+    
+                assert(result == F_SEEK_PAST_EOF);
+            }
+    );
     
     // TODO - create file, write file
     

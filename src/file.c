@@ -26,7 +26,7 @@ typedef struct __attribute__((__packed__)) FPathLocation {
 
 typedef struct FFileIndex {
     FCurrentSector current_sector;
-    uint32_t       byte_counter;
+    int32_t        byte_counter;
     bool           open;
 } FFile;
 
@@ -206,7 +206,7 @@ FFatResult file_read(FFat32* f, FILE_IDX file_idx, uint16_t* file_sector_length)
     
     uint32_t cluster = file->current_sector.cluster;
     uint16_t sector = file->current_sector.sector;
-    uint32_t byte_counter = file->byte_counter;
+    int32_t byte_counter = file->byte_counter;
     
     // advance counter
     TRY(sections_fat_calculate_next_cluster_sector(f, &file->current_sector.cluster, &file->current_sector.sector))
@@ -236,6 +236,9 @@ FFatResult file_seek_forward(FFat32* f, FILE_IDX file_idx, uint32_t count, uint1
         TRY(sections_fat_calculate_next_cluster_sector(f, &file->current_sector.cluster, &file->current_sector.sector))
         file->byte_counter -= BYTES_PER_SECTOR;
         
+        if (file->byte_counter < 0)
+            return F_SEEK_PAST_EOF;
+    
         // read from disk
         bool last_iteration = (i == (count - 1));
         if (file->current_sector.cluster == FAT_EOC || file->current_sector.cluster == FAT_EOF || file->byte_counter < BYTES_PER_SECTOR) {
