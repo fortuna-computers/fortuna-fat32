@@ -7,6 +7,8 @@
 
 #define BYTES_PER_SECTOR 512
 
+static const char* SHORT_FILE = "This is a text example for a short file.";
+
 static std::vector<File> directory;
 static FFatResult result;
 static uint32_t file_sector_length;
@@ -467,7 +469,7 @@ std::vector<Test> prepare_tests()
                 
                 FFatResult rr = f_fat32(ffat, F_READ, 0);  // file idx is already set on buffer
                 assert(rr == F_OK);
-                file_sector_length = ffat->reg.file_sector_length;
+                file_sector_length = ffat->reg.F_SZ;
                 file_contents = (const char *) ffat->buffer;
                 
                 ffat->buffer[0] = file_idx;
@@ -504,7 +506,7 @@ std::vector<Test> prepare_tests()
                 do {
                     ffat->buffer[0] = file_idx;
                     rr = check_f(f_fat32(ffat, F_READ, 0));  // file idx is already set on buffer
-                    file_sector_length = ffat->reg.file_sector_length;
+                    file_sector_length = ffat->reg.F_SZ;
                     file_contents.append((const char *) ffat->buffer, file_sector_length);
                 } while (rr == F_MORE_DATA);
                 
@@ -545,7 +547,7 @@ std::vector<Test> prepare_tests()
                 
                 FFatResult rr = f_fat32(ffat, F_READ, 0);  // file idx is already set on buffer
                 assert(rr == F_OK);
-                file_sector_length = ffat->reg.file_sector_length;
+                file_sector_length = ffat->reg.F_SZ;
                 file_contents = (const char *) ffat->buffer;
                 
                 ffat->buffer[0] = file_idx;
@@ -583,7 +585,7 @@ std::vector<Test> prepare_tests()
                 ffat->buffer[0] = file_idx;
                 *((uint32_t *) &ffat->buffer[1]) = 12;
                 result = check_f(f_fat32(ffat, F_SEEK, 0));  // move forward 12 sectors
-                file_sector_length = ffat->reg.file_sector_length;
+                file_sector_length = ffat->reg.F_SZ;
     
                 ffat->buffer[0] = file_idx;
                 check_f(f_fat32(ffat, F_READ, 0)); // read the 13th sector
@@ -629,7 +631,7 @@ std::vector<Test> prepare_tests()
                 ffat->buffer[0] = file_idx;
                 *((uint32_t *) &ffat->buffer[1]) = (uint32_t) -1;
                 result = check_f(f_fat32(ffat, F_SEEK, 0));  // move to end
-                file_sector_length = ffat->reg.file_sector_length;
+                file_sector_length = ffat->reg.F_SZ;
                 
                 ffat->buffer[0] = file_idx;
                 check_f(f_fat32(ffat, F_READ, 0)); // read last sector
@@ -676,7 +678,7 @@ std::vector<Test> prepare_tests()
                 ffat->buffer[0] = file_idx;
                 *((uint32_t *) &ffat->buffer[1]) = 1;
                 result = f_fat32(ffat, F_SEEK, 0);  // move forward 1 sector
-                file_sector_length = ffat->reg.file_sector_length;
+                file_sector_length = ffat->reg.F_SZ;
     
                 ffat->buffer[0] = file_idx;
                 check_f(f_fat32(ffat, F_CLOSE, 0));
@@ -690,7 +692,44 @@ std::vector<Test> prepare_tests()
             }
     );
     
-    // TODO - create file, write file
+    /*
+    tests.emplace_back(
+            "Rewrite sector in existing file",
+            
+            [&](FFat32* ffat, Scenario const& scenario) {
+                strcpy(reinterpret_cast<char*>(ffat->buffer), "FORTUNA.DAT");
+                
+                FFatResult r = f_fat32(ffat, F_OPEN, 0);
+                if (scenario.disk_state == Scenario::DiskState::Complete) {
+                    check_f(r);
+                } else {
+                    assert(r == F_PATH_NOT_FOUND);
+                    return;
+                }
+                
+                uint8_t file_idx = ffat->buffer[0];
+                
+                FFatResult rr = f_fat32(ffat, F_READ, 0);  // file idx is already set on buffer
+                assert(rr == F_OK);
+                F_SZ = ffat->reg.F_SZ;
+                file_contents = (const char *) ffat->buffer;
+                
+                ffat->buffer[0] = file_idx;
+                check_f(f_fat32(ffat, F_CLOSE, 0));
+            },
+            
+            [&](uint8_t const*, Scenario const& scenario) {
+                if (scenario.disk_state != Scenario::DiskState::Complete)
+                    return;
+                
+                // TODO
+            }
+    );
+     */
+    
+    // TODO - append new sector to file
+    
+    // TODO - create file
     
     // TODO - seek to end
     

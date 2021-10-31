@@ -7,7 +7,9 @@ A very small (&lt; 8 kB) and memory conscious (&lt; 40 bytes + a shared 512 byte
 
 ### Special registers
 
-* `F_RSLT`: result of the last operation
+* `F_RSLT`: result of the last operation (all operations set 
+* `F_SZ`: buffer size (used when reading/writing files)
+* `F_FLN`: file number (used when reading/writing files)
 
 ### Current limitations
 
@@ -36,24 +38,24 @@ Directory operations:
 | `F_MKDIR` | Create a directory | Directory path | - |
 | `F_RMDIR` | Remove a directory | Directory path | - |
 
-File operations:
+File editing operations:
 
-| Operation | Description | Input | Output |
-|-----------|-------------|-------|--------|
-| `F_OPEN` | Open an existing file | File name | File number |
-| `F_CREATE` | Create a file | File name | File number |
-| `F_CLOSE` | Close file | File number | - |
-| `F_SEEK`  | Seek to a file position | File number, 32-bit sector, or `0xFFFFFFFF` for end | The sector number. |
-| `F_READ` | Read block | File number, block number | Number of bytes left |
-| `F_WRITE` | Write block | File number, block number | Number of bytes to write |
-| `F_RM` | Remove file | File/Directory name | - |
+| Operation | Description | Input | Output | `F_FLN` | `F_SZ` |
+|-----------|-------------|-------|--------|---------|--------|
+| `F_OPEN` | Open an existing file | File name | - | Sets file number | - |
+| `F_CREATE` | Create a file | File name | - | Set file number |
+| `F_SEEK`  | Seek a sector (relative forward) | Buffer: 32-bit sector, or `0xFFFFFFFF` for end | - | File number | Set size of sector |
+| `F_READ` | Read block and seek next sector | - | Buffer read | File number | Set size of sector
+| `F_WRITE` | Write block | Buffer to write | - | File number | Size of sector |
+| `F_CLOSE` | Close file | - | - | File number| - |
 
-Operations that work both in files and directories:
+File/directory operations:
 
 | Operation | Description | Input | Output |
 |-----------|-------------|-------|--------|
 | `F_STAT` | Read file/dir information | File/dir name | File in directory listing ([same structure as FAT32](https://en.wikipedia.org/wiki/Design_of_the_FAT_file_system#Directory_entry) |
 | `F_MV` | Rename/move directory | Old file/directory name, new file/directory name | - |
+| `F_RM` | Remove file | File/Directory name | - |
 
 ## Structures
 

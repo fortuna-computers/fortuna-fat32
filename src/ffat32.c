@@ -67,7 +67,7 @@ static FFatResult f_read(FFat32* f)
     uint16_t file_sector_length;
     FFatResult result = file_read(f, file_idx, &file_sector_length);
     TRY(result)
-    f->reg.file_sector_length = file_sector_length;
+    f->reg.F_SZ = file_sector_length;
     return result;
 }
 
@@ -85,7 +85,7 @@ static FFatResult f_seek(FFat32* f)
     uint16_t file_sector_length;
     FFatResult result = file_seek_forward(f, file_idx, count, &file_sector_length);
     TRY(result)
-    f->reg.file_sector_length = file_sector_length;
+    f->reg.F_SZ = file_sector_length;
     return result;
 }
 
@@ -93,25 +93,25 @@ FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime)
 {
     switch (operation) {
         
-        case F_INIT:          f->reg.last_operation_result = f_init(f);                break;
-        case F_BOOT:          f->reg.last_operation_result = f_boot(f);                break;
-        case F_FREE:          f->reg.last_operation_result = f_free(f);                break;
-        case F_FSINFO_RECALC: f->reg.last_operation_result = f_fsinfo_recalc(f);       break;
-        case F_DIR:           f->reg.last_operation_result = f_dir(f);                 break;
-        case F_CD:            f->reg.last_operation_result = f_cd(f);                  break;
-        case F_MKDIR:         f->reg.last_operation_result = f_mkdir(f, fat_datetime); break;
+        case F_INIT:          f->reg.F_RSLT = f_init(f);                break;
+        case F_BOOT:          f->reg.F_RSLT = f_boot(f);                break;
+        case F_FREE:          f->reg.F_RSLT = f_free(f);                break;
+        case F_FSINFO_RECALC: f->reg.F_RSLT = f_fsinfo_recalc(f);       break;
+        case F_DIR:           f->reg.F_RSLT = f_dir(f);                 break;
+        case F_CD:            f->reg.F_RSLT = f_cd(f);                  break;
+        case F_MKDIR:         f->reg.F_RSLT = f_mkdir(f, fat_datetime); break;
         case F_RMDIR:         break;
-        case F_OPEN:          f->reg.last_operation_result = f_open(f);                break;
-        case F_CLOSE:         f->reg.last_operation_result = f_close(f);               break;
-        case F_READ:          f->reg.last_operation_result = f_read(f);                break;
-        case F_SEEK:          f->reg.last_operation_result = f_seek(f);                break;
+        case F_OPEN:          f->reg.F_RSLT = f_open(f);                break;
+        case F_CLOSE:         f->reg.F_RSLT = f_close(f);               break;
+        case F_READ:          f->reg.F_RSLT = f_read(f);                break;
+        case F_SEEK:          f->reg.F_RSLT = f_seek(f);                break;
         case F_WRITE:         break;
         case F_STAT:          break;
         case F_RM:            break;
         case F_MV:            break;
-        default:              f->reg.last_operation_result = F_INCORRECT_OPERATION;
+        default:              f->reg.F_RSLT = F_INCORRECT_OPERATION;
     }
-    return f->reg.last_operation_result;
+    return f->reg.F_RSLT;
 }
 
 const char* f_error(FFatResult result)

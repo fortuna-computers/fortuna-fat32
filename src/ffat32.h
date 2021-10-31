@@ -66,8 +66,9 @@ typedef enum FContinuation {
 } FContinuation;
 
 typedef struct __attribute__((__packed__)) FFatRegisters {
-    FFatResult last_operation_result : 8;
-    uint32_t   file_sector_length;
+    uint32_t   F_SZ;
+    FFatResult F_RSLT : 8;
+    uint8_t    F_FLN;
 } FFatRegisters;
 
 typedef struct FFat32 {
