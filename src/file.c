@@ -226,9 +226,11 @@ FFatResult file_read(FFat32* f, FILE_IDX file_idx, uint16_t* sector_size)
     }
 }
 
-FFatResult file_write(FFat32* f, FILE_IDX file_idx, uint16_t sector_size)
+FFatResult file_overwrite(FFat32* f, FILE_IDX file_idx, uint16_t sector_size)
 {
-    // TODO - adjust file size
+    // TODO - check if it is the last sector
+    // TODO - if yes, adjust file size
+    // TODO - write sector
     return F_OK;
 }
 

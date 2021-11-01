@@ -27,12 +27,13 @@ typedef enum FFat32Op {
     F_CD      = 0x23,
 
     // file operations
-    F_OPEN    = 0x30,
-    F_CREATE  = 0x31,
-    F_CLOSE   = 0x32,
-    F_SEEK    = 0x33,
-    F_READ    = 0x34,
-    F_WRITE   = 0x35,
+    F_OPEN      = 0x30,
+    F_CREATE    = 0x31,
+    F_CLOSE     = 0x32,
+    F_SEEK      = 0x33,
+    F_READ      = 0x34,
+    F_OVERWRITE = 0x35,
+    F_APPEND    = 0x36,
 
     // dir/file operations
     F_STAT    = 0x40,

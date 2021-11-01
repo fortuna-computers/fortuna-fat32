@@ -667,7 +667,7 @@ std::vector<Test> prepare_tests()
     );
     
     tests.emplace_back(
-            "Rewrite sector in existing file",
+            "Overwrite sector in existing file",
             
             [&](FFat32* ffat, Scenario const& scenario) {
                 strcpy(reinterpret_cast<char*>(ffat->buffer), "FORTUNA.DAT");
@@ -682,7 +682,7 @@ std::vector<Test> prepare_tests()
                 
                 strncpy((char *) ffat->buffer, SHORT_FILE, strlen(SHORT_FILE) + 1);
                 ffat->reg.F_SZ = strlen(SHORT_FILE) + 1;
-                check_f(f_fat32(ffat, F_WRITE, 0));  // file idx is already set on buffer
+                check_f(f_fat32(ffat, F_OVERWRITE, 0));  // file idx is already set on buffer
                 
                 check_f(f_fat32(ffat, F_CLOSE, 0));
             },

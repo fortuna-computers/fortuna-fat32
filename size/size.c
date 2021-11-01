@@ -23,7 +23,8 @@ int main()
     f_fat32(&f, F_CLOSE, 0);
     f_fat32(&f, F_SEEK, 0);
     f_fat32(&f, F_READ, 0);
-    f_fat32(&f, F_WRITE, 0);
+    f_fat32(&f, F_OVERWRITE, 0);
+    f_fat32(&f, F_APPEND, 0);
     
     f_fat32(&f, F_STAT, 0);
     f_fat32(&f, F_RM, 0);

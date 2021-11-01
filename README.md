@@ -46,7 +46,8 @@ File editing operations:
 | `F_CREATE` | Create a file | File name | - | Set file number |
 | `F_SEEK`  | Seek a sector (relative forward) | Buffer: 32-bit sector, or `0xFFFFFFFF` for end | - | File number | Set size of sector |
 | `F_READ` | Read block and seek next sector | - | Buffer read | File number | Set size of sector
-| `F_WRITE` | Write block | Buffer to write | - | File number | Size of sector |
+| `F_OVERWRITE` | Rewrite an existing block | Buffer to write | - | File number | Size of sector |
+| `F_APPEND` | Append a new block at the end of file | Buffer to write | - | File number | Size of sector |
 | `F_CLOSE` | Close file | - | - | File number| - |
 
 File/directory operations:

@@ -93,7 +93,7 @@ static FFatResult f_write(FFat32* f)
 {
     FILE_IDX file_idx = f->reg.F_FLN;
     uint16_t sector_size = f->reg.F_SZ;
-    TRY(file_write(f, file_idx, sector_size))
+    TRY(file_overwrite(f, file_idx, sector_size))
     return F_OK;
 }
 
@@ -113,7 +113,8 @@ FFatResult f_fat32(FFat32* f, FFat32Op operation, uint32_t fat_datetime)
         case F_CLOSE:         f->reg.F_RSLT = f_close(f);               break;
         case F_READ:          f->reg.F_RSLT = f_read(f);                break;
         case F_SEEK:          f->reg.F_RSLT = f_seek(f);                break;
-        case F_WRITE:         f->reg.F_RSLT = f_write(f);               break;
+        case F_OVERWRITE:     f->reg.F_RSLT = f_write(f);               break;
+        case F_APPEND:        break;
         case F_STAT:          break;
         case F_RM:            break;
         case F_MV:            break;

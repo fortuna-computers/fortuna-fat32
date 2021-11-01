@@ -48,7 +48,7 @@ FFatResult file_init(FFat32* f);
 
 FFatResult file_open(FFat32* f, char* filename, FILE_IDX* file_idx);
 FFatResult file_read(FFat32* f, FILE_IDX file_idx, uint16_t* sector_size);
-FFatResult file_write(FFat32* f, FILE_IDX file_idx, uint16_t sector_size);
+FFatResult file_overwrite(FFat32* f, FILE_IDX file_idx, uint16_t sector_size);
 FFatResult file_seek_forward(FFat32* f, FILE_IDX file_idx, uint32_t count, uint16_t* sector_size);
 FFatResult file_append_cluster(FFat32* f, FILE_IDX file_idx);
 FFatResult file_close(FFat32* f, FILE_IDX file_idx);
